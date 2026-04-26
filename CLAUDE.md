@@ -49,28 +49,29 @@ internal/
     systemprompt.go           # RenderAppendix() — auto persona injection
     log_meal.go  meals_today.go  ask.go  doctor.go  …  # one tool per file
     checks_config.go  checks_db.go  checks_ping.go  …  # one Check per concern
-  cli/                        # cobra root + chat TUI launcher only — nothing else
+  cli/                        # cobra root + thin shims that delegate to tools/
   config/                     # env + .env config (caarlos0/env)
   db/                         # persistence
     migrations/  queries/     # SQL files (sqlc + goose-format)
     sqlc/                     # GENERATED — do not edit
     store.go  migrate.go      # Store façade + embedded migration runner
-  tui/                        # bubbletea programs (uses tools.Dispatch for /-commands)
+  tui/                        # bubbletea programs (slash handlers come from tools.NewSlashHandler)
 ```
 
 | Adding… | Drop a file in… | Ritual |
 |---|---|---|
 | **Domain action / chat tool / slash command / CLI subcommand** | `internal/tools/<name>.go` (+ `<name>_test.go`) | `tools.Register(...)` in `init()` — auto-wires AI tool spec, cobra command, slash handler, system-prompt entry |
 | **Doctor health check** | `internal/tools/checks_<concern>.go` | `tools.RegisterCheck(...)` in `init()` — auto-extends `bite doctor` and `bite doctor --help` |
-| TUI screen | `internal/tui/<name>.go` | export `NewXxx(...) *tea.Program` |
+| TUI screen | `internal/tui/<name>.go` (program) + `internal/tools/run_<name>_tui.go` (launcher) | mirror `RunChatTUI`'s shape — config, store, AI client, then `tui.New(...).Run()` |
 | DB table | `internal/db/migrations/000N_*.sql` + `internal/db/queries/<entity>.sql` | `make sqlc` |
 | Store method | method on `*db.Store` in `internal/db/store.go` | wrap one or more sqlc calls |
 | Config knob | one struct field with `env:"…"` tags in `internal/config/config.go` | nothing else |
 | AI capability | function in `internal/ai/` (e.g. `analyze.go`) using the `*Client` | — |
 | Media handler | file in `internal/media/` (e.g. another transcription provider) | — |
 
-The `internal/cli/` folder is reserved for the rootCmd and the interactive
-chat launcher. Anything that fits the Tool shape goes in `internal/tools/`.
+The `internal/cli/` folder is reserved for the rootCmd and thin cobra
+delegates that call `tools.RunFooTUI`-shaped launchers. Anything else
+belongs in `internal/tools/`.
 
 **One tool / one command per file.** If you find yourself putting two
 `tools.Register` calls or two `cobra.Command`s in one file, split it.
