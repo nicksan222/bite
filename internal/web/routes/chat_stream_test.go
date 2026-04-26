@@ -130,8 +130,10 @@ func TestChatTurn_lifecycle(t *testing.T) {
 }
 
 // TestChatTurn_idIsSingleUse locks in the contract that a turn ID can
-// only be popped once. A second GET must 404 — otherwise a refresh in
-// the browser would replay the conversation.
+// only be popped once. A second GET still gets a 200 SSE stream (the
+// always-SSE rule) but with an `event: error` payload so the asst
+// bubble can surface "turn expired or not found" instead of replaying
+// the conversation on a browser refresh.
 func TestChatTurn_idIsSingleUse(t *testing.T) {
 	app := newApp(Deps{AI: &stubStreamer{deltas: []string{"x"}, final: "x"}})
 
