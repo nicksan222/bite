@@ -178,6 +178,32 @@ func TestCountingWriter_tracksBytes(t *testing.T) {
 	assert.Equal(t, 11, cw.n)
 }
 
+func TestRegisterCobra_depsProviderError(t *testing.T) {
+	withCleanRegistry(t, func() {
+		Register(noopTool("p"))
+		root := &cobra.Command{Use: "test"}
+		RegisterCobra(root, func(_ context.Context) (Deps, func(), error) {
+			return Deps{}, nil, assert.AnError
+		})
+		_, err := runCmd(t, root, "p")
+		require.Error(t, err)
+	})
+}
+
+func TestRegisterCobra_cleanupRuns(t *testing.T) {
+	withCleanRegistry(t, func() {
+		Register(noopTool("p"))
+		var called bool
+		root := &cobra.Command{Use: "test"}
+		RegisterCobra(root, func(_ context.Context) (Deps, func(), error) {
+			return Deps{}, func() { called = true }, nil
+		})
+		_, err := runCmd(t, root, "p")
+		require.NoError(t, err)
+		assert.True(t, called, "cleanup should run after Run completes")
+	})
+}
+
 func TestParseString_allTypes(t *testing.T) {
 	v, err := parseString(ParamString, "hi")
 	require.NoError(t, err)

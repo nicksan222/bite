@@ -130,6 +130,14 @@ func TestSeverity_String(t *testing.T) {
 	assert.Equal(t, "unknown", Severity(99).String())
 }
 
+func TestDescribeCheck_fallsBackToName(t *testing.T) {
+	var b strings.Builder
+	describeCheck(&b, Check{Name: "tagged", Gate: "ping"})
+	out := b.String()
+	assert.Contains(t, out, "tagged")
+	assert.Contains(t, out, "(only with --ping)")
+}
+
 func TestRunCheck_recordsSuccess(t *testing.T) {
 	var sb strings.Builder
 	ok := runCheck(context.Background(), &sb, Check{
