@@ -96,7 +96,7 @@ func toCobraCommand(t Tool, provide DepsProvider) *cobra.Command {
 		// Result.Text so the user doesn't see it twice.
 		cw := &countingWriter{w: c.OutOrStdout()}
 		deps.StreamWriter = cw
-		res, err := t.Run(c.Context(), deps, NewArgs(raw))
+		res, err := t.Run(c.Context(), deps, NewArgsForTool(t, raw))
 		if err != nil {
 			return err
 		}

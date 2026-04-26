@@ -24,11 +24,8 @@ when they were eaten ("show my last 5 meals").`,
 }
 
 func runMealsRecent(ctx context.Context, deps Deps, args Args) (Result, error) {
-	limit := args.Int("limit")
-	if limit <= 0 {
-		limit = 10
-	}
-	meals, err := deps.Store.ListRecentMeals(ctx, limit)
+	// Default applied by NewArgsForTool; this is now just a read.
+	meals, err := deps.Store.ListRecentMeals(ctx, args.Int("limit"))
 	if err != nil {
 		return Result{}, fmt.Errorf("list meals: %w", err)
 	}

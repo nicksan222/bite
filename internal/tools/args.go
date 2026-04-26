@@ -20,6 +20,29 @@ func NewArgs(raw map[string]any) Args {
 	return Args{raw: raw}
 }
 
+// NewArgsForTool wraps a raw map and fills in any Param.Default for params
+// the user did not supply. Adapters use this so a Tool.Run can rely on
+// args.Int/Float/etc. returning the declared Default — no per-tool
+// `if v == 0 { v = N }` boilerplate.
+//
+// Params *without* a Default are left absent (Has returns false), preserving
+// the absent-vs-zero distinction set_goals depends on.
+func NewArgsForTool(t Tool, raw map[string]any) Args {
+	if raw == nil {
+		raw = map[string]any{}
+	}
+	for _, p := range t.Params {
+		if p.Default == nil {
+			continue
+		}
+		if _, supplied := raw[p.Name]; supplied {
+			continue
+		}
+		raw[p.Name] = p.Default
+	}
+	return Args{raw: raw}
+}
+
 // Has reports whether name was supplied.
 func (a Args) Has(name string) bool {
 	_, ok := a.raw[name]

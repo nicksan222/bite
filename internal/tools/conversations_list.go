@@ -14,7 +14,7 @@ update.`,
 		Prompt: `Use conversations_list when the user asks what they have been talking about,
 wants to find a past chat by title, or wants the most recent conversation IDs.`,
 		Params: []Param{
-			{Name: "limit", Type: ParamInt,
+			{Name: "limit", Type: ParamInt, Default: int64(100),
 				Desc: "Max conversations to list (default 100)."},
 		},
 		Run: runConversationsList,
@@ -22,11 +22,7 @@ wants to find a past chat by title, or wants the most recent conversation IDs.`,
 }
 
 func runConversationsList(ctx context.Context, deps Deps, args Args) (Result, error) {
-	limit := args.Int("limit")
-	if limit <= 0 {
-		limit = 100
-	}
-	rows, err := deps.Store.ListConversations(ctx, limit)
+	rows, err := deps.Store.ListConversations(ctx, args.Int("limit"))
 	if err != nil {
 		return Result{}, fmt.Errorf("list conversations: %w", err)
 	}

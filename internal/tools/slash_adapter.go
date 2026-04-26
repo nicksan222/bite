@@ -70,7 +70,8 @@ func Dispatch(ctx context.Context, deps Deps, line string) SlashOutcome {
 }
 
 // parseSlashArgs tokenises rest as a mix of positionals and key=value pairs,
-// validates required params, and returns Args ready for Run.
+// validates required params, and returns Args ready for Run. Param Defaults
+// are applied via NewArgsForTool so absent optionals get their declared value.
 func parseSlashArgs(t Tool, rest string) (Args, error) {
 	tokens, err := tokeniseSlash(rest)
 	if err != nil {
@@ -151,7 +152,7 @@ func parseSlashArgs(t Tool, rest string) (Args, error) {
 			return Args{}, fmt.Errorf("missing required argument %q", p.Name)
 		}
 	}
-	return NewArgs(raw), nil
+	return NewArgsForTool(t, raw), nil
 }
 
 // isKeyValue reports whether tok looks like a "name=value" pair where the

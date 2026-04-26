@@ -42,7 +42,7 @@ func toAITool(t Tool, deps Deps) ai.Tool {
 					return "", fmt.Errorf("parse args: %w", err)
 				}
 			}
-			res, err := t.Run(ctx, deps, NewArgs(raw))
+			res, err := t.Run(ctx, deps, NewArgsForTool(t, raw))
 			if err != nil {
 				return "", err
 			}

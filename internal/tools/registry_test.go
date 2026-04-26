@@ -151,6 +151,34 @@ func TestArgs_accessors(t *testing.T) {
 	assert.Equal(t, []string{"a", "b"}, a.StringList("sl"))
 }
 
+func TestArgs_NewArgsForTool_appliesDefaults(t *testing.T) {
+	tt := Tool{
+		Name: "x", Summary: "s", Description: "d",
+		Params: []Param{
+			{Name: "limit", Type: ParamInt, Default: int64(42), Desc: "d"},
+			{Name: "name", Type: ParamString, Default: "anon", Desc: "d"},
+			{Name: "ratio", Type: ParamFloat, Desc: "d"}, // no Default → stays absent
+		},
+		Run: func(_ context.Context, _ Deps, _ Args) (Result, error) { return Result{}, nil },
+	}
+	a := NewArgsForTool(tt, map[string]any{})
+	assert.Equal(t, int64(42), a.Int("limit"), "missing optional with Default should be filled")
+	assert.Equal(t, "anon", a.String("name"))
+	assert.False(t, a.Has("ratio"), "param without Default must remain absent so set_goals semantics survive")
+}
+
+func TestArgs_NewArgsForTool_doesNotOverrideSupplied(t *testing.T) {
+	tt := Tool{
+		Name: "x", Summary: "s", Description: "d",
+		Params: []Param{
+			{Name: "limit", Type: ParamInt, Default: int64(42), Desc: "d"},
+		},
+		Run: func(_ context.Context, _ Deps, _ Args) (Result, error) { return Result{}, nil },
+	}
+	a := NewArgsForTool(tt, map[string]any{"limit": int64(7)})
+	assert.Equal(t, int64(7), a.Int("limit"), "supplied value must beat Default")
+}
+
 func TestArgs_StringList_acceptsNativeSlice(t *testing.T) {
 	// AI/JSON inputs arrive as []any, but cobra's StringArray flags hand us
 	// a real []string. Both must round-trip identically.
