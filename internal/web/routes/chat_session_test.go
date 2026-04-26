@@ -6,6 +6,8 @@ import (
 	"time"
 
 	"github.com/stretchr/testify/require"
+
+	"github.com/nicksan222/bite/internal/ai"
 )
 
 // TestSessionStore_cookieSecuritySettings pins the chat-session cookie's
@@ -45,17 +47,24 @@ func TestSessionStore_appendTurn_unknownIDIsNoop(t *testing.T) {
 }
 
 // TestSessionStore_appendTurn_refreshesLastTouched proves appendTurn
-// bumps sess.last. Without this, a session that takes most of the TTL
-// to assemble its first reply could be pruned right after the SSE
-// stream completes — losing the asst message that was just appended.
+// bumps sess.last AND actually appends the user/asst pair to history.
+// Without the timestamp bump, a session that takes most of the TTL to
+// assemble its first reply could be pruned right after the SSE stream
+// completes — losing the asst message just appended. Without the
+// history append, subsequent turns wouldn't carry context.
 func TestSessionStore_appendTurn_refreshesLastTouched(t *testing.T) {
 	stale := time.Now().Add(-2 * chatSessionTTL)
 	s := &sessionStore{sessions: map[string]*chatSession{
 		"s1": {last: stale},
 	}}
 	s.appendTurn("s1", "u", "a")
-	require.True(t, s.sessions["s1"].last.After(stale),
+	sess := s.sessions["s1"]
+	require.True(t, sess.last.After(stale),
 		"appendTurn must refresh last so the just-completed turn isn't pruned next")
+	require.Equal(t, []ai.Message{
+		{Role: ai.RoleUser, Content: "u"},
+		{Role: ai.RoleAssistant, Content: "a"},
+	}, sess.history, "appendTurn must record the full user/asst exchange in order")
 }
 
 // TestSessionStore_ensure_prunesIdleEntries pins that prune runs as
