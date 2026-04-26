@@ -7,8 +7,22 @@ import (
 
 	"github.com/stretchr/testify/require"
 
+	"github.com/nicksan222/bite/internal/ai"
 	"github.com/nicksan222/bite/internal/db"
 )
+
+// stubAI is a tiny ai.Streamer that emits a fixed response in one Delta and
+// one Done event. Shared across analyze_meal, ask, and log_meal_from_media
+// tests so each file doesn't redefine its own AI mock.
+type stubAI struct{ resp string }
+
+func (s stubAI) Stream(_ context.Context, _ []ai.Message, _ ...ai.StreamOption) (<-chan ai.StreamEvent, error) {
+	ch := make(chan ai.StreamEvent, 2)
+	ch <- ai.StreamEvent{Delta: s.resp}
+	ch <- ai.StreamEvent{Done: true, Final: s.resp}
+	close(ch)
+	return ch, nil
+}
 
 // freshDeps spins up a fresh in-memory SQLite store, fixed clock, and UTC loc.
 // The store is closed via t.Cleanup.

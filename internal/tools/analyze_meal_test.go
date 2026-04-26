@@ -6,20 +6,7 @@ import (
 
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
-
-	"github.com/nicksan222/bite/internal/ai"
 )
-
-// stubAI returns a fixed analysis JSON in two stream events.
-type stubAI struct{ resp string }
-
-func (s stubAI) Stream(_ context.Context, _ []ai.Message, _ ...ai.StreamOption) (<-chan ai.StreamEvent, error) {
-	ch := make(chan ai.StreamEvent, 2)
-	ch <- ai.StreamEvent{Delta: s.resp}
-	ch <- ai.StreamEvent{Done: true, Final: s.resp}
-	close(ch)
-	return ch, nil
-}
 
 const analysisJSON = `{"title":"pasta","description":"with pesto","items":["pasta","pesto"],"kcal":550,"protein_g":18,"carbs_g":80,"fat_g":12,"confidence":"high"}`
 
