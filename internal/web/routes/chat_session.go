@@ -20,6 +20,11 @@ const (
 	// because the tab stays open between turns and a thinking user is
 	// normal.
 	chatSessionTTL = 6 * time.Hour
+
+	// chatSessionCookieMaxAge mirrors the server-side TTL so the cookie
+	// outlives a browser restart within the window. Pre-computed
+	// because cookie creation runs on every new session.
+	chatSessionCookieMaxAge = int(chatSessionTTL / time.Second)
 )
 
 // chatSessionStore holds every active session in memory. Restart loses
@@ -67,7 +72,7 @@ func (s *sessionStore) ensure(c fiber.Ctx) (string, []ai.Message) {
 		// Match the server-side TTL so the cookie outlives a browser
 		// restart — closing the tab and reopening within the window
 		// keeps the user on the same conversation.
-		MaxAge: int(chatSessionTTL.Seconds()),
+		MaxAge: chatSessionCookieMaxAge,
 	})
 	return id, nil
 }
