@@ -33,10 +33,10 @@ var rootCmd = &cobra.Command{
 	Long: `bite is your terminal AI nutritionist.
 
 Chat about food, log meals, estimate calories and macros from images, audio,
-or video. Conversations live locally in SQLite. See CLAUDE.md for where each
-kind of change goes.
+or video. Conversations live locally in SQLite.
 
-Set ANTHROPIC_API_KEY (or put it in .env) before running.`,
+Set ANTHROPIC_API_KEY (or put it in .env) before running. See bite doctor
+for environment health checks.`,
 	Example: `  bite                                       # interactive chat (default)
   bite log_meal "200g pasta with pesto"       # log a meal from text
   bite log_meal_from_media "lunch" --file plate.jpg
