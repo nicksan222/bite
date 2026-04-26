@@ -49,6 +49,11 @@ func (c Check) validate() error {
 	if c.Run == nil {
 		return fmt.Errorf("check %q: nil Run", c.Name)
 	}
+	// Gate becomes a Bool flag on the doctor tool — auto-derived in
+	// gateParams. Reject names that wouldn't survive Param validation.
+	if c.Gate != "" && !isSnakeCase(c.Gate) {
+		return fmt.Errorf("check %q: Gate %q must be lower_snake_case", c.Name, c.Gate)
+	}
 	return nil
 }
 

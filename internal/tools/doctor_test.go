@@ -28,6 +28,12 @@ func TestChecks_returnsRegistered(t *testing.T) {
 func TestRegisterCheck_panicsOnInvalid(t *testing.T) {
 	assert.Panics(t, func() { RegisterCheck(Check{Name: ""}) })
 	assert.Panics(t, func() { RegisterCheck(Check{Name: "x", Run: nil}) })
+	assert.Panics(t, func() {
+		RegisterCheck(Check{
+			Name: "x", Gate: "Bad-Gate",
+			Run: func(_ context.Context) (string, error) { return "", nil },
+		})
+	}, "Gate must reject non-snake_case names so the auto-derived flag stays valid")
 }
 
 // snapshotCheckRegistry preserves the live check registry around a test
