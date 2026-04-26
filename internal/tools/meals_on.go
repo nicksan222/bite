@@ -37,16 +37,7 @@ func runMealsOn(ctx context.Context, deps Deps, args Args) (Result, error) {
 		return Result{Text: fmt.Sprintf("no meals logged on %s", day.Format("2006-01-02"))}, nil
 	}
 	var sb strings.Builder
-	var tk, tp, tc, tf float64
 	fmt.Fprintf(&sb, "%s:\n", day.Format("Monday 2006-01-02"))
-	for _, m := range meals {
-		fmt.Fprintf(&sb, "  - %s: %.0f kcal, %.1fg P, %.1fg C, %.1fg F\n",
-			m.Title, m.Kcal, m.ProteinG, m.CarbsG, m.FatG)
-		tk += m.Kcal
-		tp += m.ProteinG
-		tc += m.CarbsG
-		tf += m.FatG
-	}
-	fmt.Fprintf(&sb, "Total: %.0f kcal, %.1fg protein, %.1fg carbs, %.1fg fat", tk, tp, tc, tf)
+	sb.WriteString(formatMealList(meals))
 	return Result{Text: sb.String()}, nil
 }

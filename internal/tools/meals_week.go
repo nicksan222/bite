@@ -43,27 +43,22 @@ func runMealsWeek(ctx context.Context, deps Deps, _ Args) (Result, error) {
 	}
 
 	var sb strings.Builder
-	var weekKcal, weekP, weekC, weekF float64
+	var week totals
 	for _, label := range order {
 		fmt.Fprintf(&sb, "%s:\n", label)
-		var dayKcal, dayP, dayC, dayF float64
+		var day totals
 		for _, m := range groups[label] {
-			fmt.Fprintf(&sb, "  - %s: %.0f kcal, %.1fg P, %.1fg C, %.1fg F\n",
-				m.Title, m.Kcal, m.ProteinG, m.CarbsG, m.FatG)
-			dayKcal += m.Kcal
-			dayP += m.ProteinG
-			dayC += m.CarbsG
-			dayF += m.FatG
+			writeMealLine(&sb, "  ", m)
+			day.add(m)
 		}
-		fmt.Fprintf(&sb, "  Day total: %.0f kcal, %.1fg protein, %.1fg carbs, %.1fg fat\n",
-			dayKcal, dayP, dayC, dayF)
-		weekKcal += dayKcal
-		weekP += dayP
-		weekC += dayC
-		weekF += dayF
+		writeTotalsLine(&sb, "  Day total", day)
+		sb.WriteByte('\n')
+		week.Kcal += day.Kcal
+		week.ProteinG += day.ProteinG
+		week.CarbsG += day.CarbsG
+		week.FatG += day.FatG
 	}
-	fmt.Fprintf(&sb, "Week total: %.0f kcal, %.1fg protein, %.1fg carbs, %.1fg fat",
-		weekKcal, weekP, weekC, weekF)
+	writeTotalsLine(&sb, "Week total", week)
 	return Result{Text: sb.String()}, nil
 }
 
