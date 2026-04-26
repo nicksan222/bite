@@ -114,6 +114,7 @@ func TestChatTurn_lifecycle(t *testing.T) {
 	resp, err := app.Test(postForm("/api/chat", map[string]string{"message": "hi"}))
 	require.NoError(t, err)
 	require.Equal(t, http.StatusOK, resp.StatusCode)
+	require.Contains(t, resp.Header.Get("Content-Type"), "text/html")
 	body, _ := io.ReadAll(resp.Body)
 	turnID := extractTurnID(t, string(body))
 
