@@ -1,0 +1,205 @@
+package tools
+
+import (
+	"context"
+	"fmt"
+	"strings"
+	"unicode"
+)
+
+// SlashOutcome is the result of dispatching one slash command. UserLine is
+// the raw line the user typed (for transcript echo). Result is what the tool
+// returned. ParseError is set when the line could not be parsed (unknown
+// command, missing required positional, type mismatch). RunError is set when
+// the tool itself returned an error.
+type SlashOutcome struct {
+	UserLine   string
+	Result     Result
+	ParseError error
+	RunError   error
+}
+
+// Dispatch parses a slash line, looks up the tool, runs it, and returns the
+// outcome. The /help builtin lists every registered tool.
+func Dispatch(ctx context.Context, deps Deps, line string) SlashOutcome {
+	line = strings.TrimSpace(line)
+	if !strings.HasPrefix(line, "/") {
+		return SlashOutcome{UserLine: line, ParseError: fmt.Errorf("not a slash command")}
+	}
+	name, rest, _ := strings.Cut(line[1:], " ")
+	name = strings.TrimSpace(name)
+
+	if name == "help" {
+		return SlashOutcome{UserLine: line, Result: Result{Text: helpText()}}
+	}
+
+	tool, ok := Get(name)
+	if !ok {
+		return SlashOutcome{UserLine: line, ParseError: fmt.Errorf("unknown command: /%s — type /help for the list", name)}
+	}
+
+	args, err := parseSlashArgs(tool, rest)
+	if err != nil {
+		return SlashOutcome{UserLine: line, ParseError: err}
+	}
+	res, err := tool.Run(ctx, deps, args)
+	if err != nil {
+		return SlashOutcome{UserLine: line, RunError: err}
+	}
+	return SlashOutcome{UserLine: line, Result: res}
+}
+
+// parseSlashArgs tokenises rest as a mix of positionals and key=value pairs,
+// validates required params, and returns Args ready for Run.
+func parseSlashArgs(t Tool, rest string) (Args, error) {
+	tokens, err := tokeniseSlash(rest)
+	if err != nil {
+		return Args{}, err
+	}
+	raw := map[string]any{}
+
+	// Split tokens into positionals (until first key=value) and keyed.
+	var positionals, keyed []string
+	for _, tok := range tokens {
+		if isKeyValue(tok) {
+			keyed = append(keyed, tok)
+			continue
+		}
+		if len(keyed) > 0 {
+			return Args{}, fmt.Errorf("positional %q must come before key=value pairs", tok)
+		}
+		positionals = append(positionals, tok)
+	}
+
+	// Fill positional params in declaration order.
+	pi := 0
+	var positionalParams []Param
+	for _, p := range t.Params {
+		if p.Positional {
+			positionalParams = append(positionalParams, p)
+		}
+	}
+	if len(positionals) > len(positionalParams) {
+		return Args{}, fmt.Errorf("too many positional arguments (got %d, want at most %d)", len(positionals), len(positionalParams))
+	}
+	for ; pi < len(positionals); pi++ {
+		p := positionalParams[pi]
+		v, err := parseString(p.Type, positionals[pi])
+		if err != nil {
+			return Args{}, fmt.Errorf("argument %q: %w", p.Name, err)
+		}
+		raw[p.Name] = v
+	}
+
+	// Fill keyed params.
+	byName := map[string]Param{}
+	for _, p := range t.Params {
+		byName[p.Name] = p
+	}
+	for _, kv := range keyed {
+		key, val, _ := strings.Cut(kv, "=")
+		key = strings.TrimSpace(key)
+		// Accept both kebab-case (CLI style) and snake_case (canonical).
+		key = strings.ReplaceAll(key, "-", "_")
+		p, ok := byName[key]
+		if !ok {
+			return Args{}, fmt.Errorf("unknown parameter %q", key)
+		}
+		v, err := parseString(p.Type, val)
+		if err != nil {
+			return Args{}, fmt.Errorf("argument %q: %w", p.Name, err)
+		}
+		// StringList: append if already present.
+		if p.Type == ParamStringList {
+			if cur, exists := raw[p.Name]; exists {
+				if curList, ok := cur.([]string); ok {
+					raw[p.Name] = append(curList, val)
+					continue
+				}
+			}
+			raw[p.Name] = []string{val}
+			continue
+		}
+		raw[p.Name] = v
+	}
+
+	// Check required params.
+	for _, p := range t.Params {
+		if !p.Required {
+			continue
+		}
+		if _, ok := raw[p.Name]; !ok {
+			return Args{}, fmt.Errorf("missing required argument %q", p.Name)
+		}
+	}
+	return NewArgs(raw), nil
+}
+
+// isKeyValue reports whether tok looks like a "name=value" pair where the
+// name part is a plausible identifier (letters, digits, _ , -).
+func isKeyValue(tok string) bool {
+	eq := strings.IndexByte(tok, '=')
+	if eq <= 0 {
+		return false
+	}
+	name := tok[:eq]
+	for i, r := range name {
+		switch {
+		case unicode.IsLetter(r) || r == '_':
+		case unicode.IsDigit(r) && i > 0:
+		case r == '-' && i > 0:
+		default:
+			return false
+		}
+	}
+	return true
+}
+
+// tokeniseSlash splits a slash-command rest string into tokens, honouring
+// double-quoted spans so values may contain spaces.
+func tokeniseSlash(s string) ([]string, error) {
+	var tokens []string
+	var cur strings.Builder
+	inQuote := false
+	for i := 0; i < len(s); i++ {
+		c := s[i]
+		switch {
+		case c == '"':
+			inQuote = !inQuote
+		case c == ' ' && !inQuote:
+			if cur.Len() > 0 {
+				tokens = append(tokens, cur.String())
+				cur.Reset()
+			}
+		default:
+			cur.WriteByte(c)
+		}
+	}
+	if inQuote {
+		return nil, fmt.Errorf("unterminated quoted string")
+	}
+	if cur.Len() > 0 {
+		tokens = append(tokens, cur.String())
+	}
+	return tokens, nil
+}
+
+// helpText lists every registered tool with its summary. Generated, not
+// hand-maintained: a new tool shows up automatically.
+func helpText() string {
+	all := All()
+	if len(all) == 0 {
+		return "no slash commands registered"
+	}
+	var b strings.Builder
+	b.WriteString("Slash commands:\n")
+	for _, t := range all {
+		b.WriteString("  /")
+		b.WriteString(t.Name)
+		b.WriteString(" — ")
+		b.WriteString(t.Summary)
+		b.WriteString("\n")
+	}
+	b.WriteString("  /help — show this list")
+	return b.String()
+}
