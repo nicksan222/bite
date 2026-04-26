@@ -2,6 +2,7 @@ package cli
 
 import (
 	"context"
+	"runtime"
 	"testing"
 
 	"github.com/stretchr/testify/assert"
@@ -19,7 +20,18 @@ func TestSetBuildInfo_emptySkips(t *testing.T) {
 	assert.Equal(t, "before", buildVersion, "buildVersion should not change on empty input")
 }
 
+// skipIfWindowsTTYHang: see launch_chat_test.go for rationale. Windows CI
+// hands the test process a real console, so bubbletea's prog.Run blocks
+// for input until the test timeout instead of failing fast.
+func skipIfWindowsTTYHang(t *testing.T) {
+	t.Helper()
+	if runtime.GOOS == "windows" {
+		t.Skip("Windows CI presents a real console — bubbletea hangs instead of failing fast")
+	}
+}
+
 func TestExecute_rootRunE_noTTY(t *testing.T) {
+	skipIfWindowsTTYHang(t)
 	dir := t.TempDir()
 	t.Setenv("BITE_DB", dir+"/test.db")
 	t.Setenv("BITE_MODEL", "claude-haiku-4-5")
@@ -37,6 +49,7 @@ func TestExecute_rootRunE_noTTY(t *testing.T) {
 }
 
 func TestExecute_chatSubcommand_noTTY(t *testing.T) {
+	skipIfWindowsTTYHang(t)
 	dir := t.TempDir()
 	t.Setenv("BITE_DB", dir+"/test.db")
 	t.Setenv("BITE_MODEL", "claude-haiku-4-5")

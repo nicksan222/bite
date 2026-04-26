@@ -34,6 +34,9 @@ func TestFFmpegExtractor_missingBinary(t *testing.T) {
 }
 
 func TestFFmpegExtractor_withFakeBinary(t *testing.T) {
+	if runtime.GOOS == "windows" {
+		t.Skip("fake-ffmpeg-shebang trick is unix-specific")
+	}
 	// Create a fake ffmpeg that exits non-zero to test error propagation.
 	dir := t.TempDir()
 	fakeFFmpeg := filepath.Join(dir, "ffmpeg")
@@ -49,6 +52,9 @@ func TestFFmpegExtractor_withFakeBinary(t *testing.T) {
 }
 
 func TestFFmpegExtractor_defaultN(t *testing.T) {
+	if runtime.GOOS == "windows" {
+		t.Skip("fake-ffmpeg-shebang trick is unix-specific")
+	}
 	// Fake ffmpeg: writes 2 JPEG files into the pattern dir and exits 0.
 	dir := t.TempDir()
 	fakeFFmpeg := filepath.Join(dir, "ffmpeg")
@@ -67,6 +73,9 @@ func TestFFmpegExtractor_defaultN(t *testing.T) {
 }
 
 func TestFFmpegExtractor_noFramesProduced(t *testing.T) {
+	if runtime.GOOS == "windows" {
+		t.Skip("fake-ffmpeg-shebang trick is unix-specific")
+	}
 	// Fake ffmpeg: exits 0 but produces no frame files.
 	dir := t.TempDir()
 	fakeFFmpeg := filepath.Join(dir, "ffmpeg")
@@ -109,6 +118,9 @@ func TestFFmpegExtractor_mkdirTempError(t *testing.T) {
 }
 
 func TestCheckFFmpeg_found(t *testing.T) {
+	if runtime.GOOS == "windows" {
+		t.Skip("fake-ffmpeg-shebang trick is unix-specific")
+	}
 	// Create a fake ffmpeg that succeeds the LookPath check.
 	dir := t.TempDir()
 	fakeFFmpeg := filepath.Join(dir, "ffmpeg")

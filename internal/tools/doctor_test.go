@@ -145,9 +145,11 @@ func TestDoctor_ffmpegSuccessPath(t *testing.T) {
 }
 
 func TestDoctor_dbCheckFailsWithBadDSN(t *testing.T) {
-	// Pointing BITE_DB at a directory exercises the db.Open error branch
-	// inside the "db: open + migrate" check.
-	t.Setenv("BITE_DB", "/tmp")
+	// Pointing BITE_DB at a directory (not a file) exercises the db.Open
+	// error branch inside the "db: open + migrate" check. Using t.TempDir()
+	// keeps this cross-platform — "/tmp" doesn't exist as a directory on
+	// Windows.
+	t.Setenv("BITE_DB", t.TempDir())
 	t.Setenv("BITE_MODEL", "claude-haiku-4-5")
 	t.Setenv("BITE_MAX_TOKENS", "")
 	t.Setenv("ANTHROPIC_API_KEY", "sk-test-fake")

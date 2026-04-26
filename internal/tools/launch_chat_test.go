@@ -3,6 +3,7 @@ package tools
 import (
 	"context"
 	"maps"
+	"runtime"
 	"testing"
 
 	"github.com/stretchr/testify/require"
@@ -41,13 +42,28 @@ func launchChat(ctx context.Context, resumeID int64) error {
 	return err
 }
 
+// skipIfWindowsTTYHang skips tests that expect bubbletea to fail fast in a
+// non-interactive environment. Linux/macOS CI runs without a terminal so
+// prog.Run errors immediately, but Windows GitHub Actions presents a real
+// console to test processes — prog.Run blocks for input until the test
+// timeout (10 min). Production behavior is identical; only the test
+// assumption is platform-dependent.
+func skipIfWindowsTTYHang(t *testing.T) {
+	t.Helper()
+	if runtime.GOOS == "windows" {
+		t.Skip("Windows CI presents a real console — bubbletea hangs instead of failing fast")
+	}
+}
+
 func TestLaunchChat_configError(t *testing.T) {
 	stubChatEnv(t, map[string]string{"BITE_MAX_TOKENS": "not-a-number"})
 	require.Error(t, launchChat(context.Background(), 0))
 }
 
 func TestLaunchChat_openStoreError(t *testing.T) {
-	stubChatEnv(t, map[string]string{"BITE_DB": "/tmp"}) // directory, not a file
+	// Pointing BITE_DB at a directory (not a file) makes db.Open fail.
+	// t.TempDir() keeps this cross-platform — "/tmp" only works on unix.
+	stubChatEnv(t, map[string]string{"BITE_DB": t.TempDir()})
 	require.Error(t, launchChat(context.Background(), 0))
 }
 
@@ -62,6 +78,7 @@ func TestLaunchChat_resumeNotFound(t *testing.T) {
 }
 
 func TestLaunchChat_noTTY(t *testing.T) {
+	skipIfWindowsTTYHang(t)
 	stubChatEnv(t, nil)
 	if launchChat(context.Background(), 0) == nil {
 		t.Skip("running in TTY environment — skip non-TTY coverage test")

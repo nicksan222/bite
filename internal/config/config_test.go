@@ -3,6 +3,7 @@ package config
 import (
 	"os"
 	"path/filepath"
+	"runtime"
 	"testing"
 
 	"github.com/stretchr/testify/assert"
@@ -78,6 +79,11 @@ func TestLoad_invalidMaxTokensEnvVar(t *testing.T) {
 
 func TestLoad_uncreatableDataDir(t *testing.T) {
 	// /dev/null is a char device — MkdirAll of /dev/null/sub will fail.
+	// Windows has no equivalent guaranteed-uncreatable path under the user's
+	// rights, so skip there; the unix branch alone is sufficient coverage.
+	if runtime.GOOS == "windows" {
+		t.Skip("no equivalent uncreatable path on Windows")
+	}
 	t.Setenv("BITE_DB", "/dev/null/sub/bite.db")
 	t.Setenv("BITE_MAX_TOKENS", "")
 	_, err := Load()

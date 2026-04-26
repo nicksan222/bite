@@ -78,8 +78,9 @@ func TestCobraDepsProvider_configError(t *testing.T) {
 
 func TestCobraDepsProvider_storeOpenError(t *testing.T) {
 	// Pointing BITE_DB at a directory makes db.Open fail (it'd try to open
-	// the dir as a SQLite file and ping fails).
-	t.Setenv("BITE_DB", "/tmp")
+	// the dir as a SQLite file and ping fails). t.TempDir() works on every
+	// platform; "/tmp" doesn't exist on Windows.
+	t.Setenv("BITE_DB", t.TempDir())
 	t.Setenv("BITE_MODEL", "claude-haiku-4-5")
 	t.Setenv("BITE_MAX_TOKENS", "")
 	t.Setenv("ANTHROPIC_API_KEY", "sk-test-fake")
