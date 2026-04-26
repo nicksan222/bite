@@ -89,8 +89,8 @@ func TestPumpStreamEvents_terminalErrorYieldsErrorEvent(t *testing.T) {
 // failingWriter errors on the Nth write. Drives pumpStreamEvents into
 // its Flush-error early return.
 type failingWriter struct {
-	written int
-	failAt  int
+	written int // count of Write calls so far
+	failAt  int // first Write index that returns an error (1-indexed)
 }
 
 func (f *failingWriter) Write(p []byte) (int, error) {
