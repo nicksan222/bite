@@ -11,26 +11,17 @@ import (
 	"github.com/nicksan222/bite/internal/db"
 )
 
-// RunChatTUI is the no-cobra entry point used by `bite` (no subcommand): it
-// opens the store + lazyAI, then dispatches through the registered chat Tool
-// so there's exactly one place that actually knows how to launch the TUI
-// (the chat tool's Run). cli/root.go calls this; everything else flows
-// through cobra's normal subcommand path.
+// RunChatTUI is the no-cobra entry point used by `bite` (no subcommand). It
+// reuses CobraDepsProvider for deps so there's exactly ONE deps-builder
+// shared with the cobra path, then dispatches through the registered chat
+// Tool — the only function that actually knows how to launch the TUI.
 func RunChatTUI(ctx context.Context, resumeID int64) error {
-	cfg, err := LoadConfig()
+	deps, cleanup, err := CobraDepsProvider(ctx)
 	if err != nil {
 		return err
 	}
-	store, err := OpenStore(ctx, cfg)
-	if err != nil {
-		return err
-	}
-	defer store.Close()
-	deps := Deps{
-		Store:        store,
-		AI:           lazyAI{cfg: cfg},
-		Model:        cfg.Model,
-		OpenAIAPIKey: cfg.OpenAIAPIKey,
+	if cleanup != nil {
+		defer cleanup()
 	}
 	chat := MustGet("chat")
 	_, err = chat.Run(ctx, deps, NewArgsForTool(chat, map[string]any{"resume": resumeID}))
