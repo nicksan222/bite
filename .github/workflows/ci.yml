@@ -29,10 +29,15 @@ jobs:
           go-version: '1.25'
           cache: true
 
+      # sqlc-generated files are committed to git, so only Linux needs to
+      # install sqlc and verify the checked-in output is up to date.
+      # Windows/macOS skip these steps (saves ~4 min on Windows runners).
       - name: Install sqlc
+        if: runner.os == 'Linux'
         run: go install github.com/sqlc-dev/sqlc/cmd/sqlc@latest
 
       - name: Generate sqlc code
+        if: runner.os == 'Linux'
         shell: bash
         run: sqlc generate
 
