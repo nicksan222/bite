@@ -32,14 +32,19 @@ func setSSEHeaders(c fiber.Ctx) {
 }
 
 // pumpStreamEvents drains the model channel into SSE events. Returns
-// the final assistant text (so the caller can append it to the chat
-// session) — empty string if the stream errored or aborted before a
-// done event.
+// the assistant's final text on a clean Done so the caller can append
+// it to the chat session; returns "" on a mid-stream error, on a
+// client-disconnect (Flush failure), or when the channel closes
+// without a Done event — i.e. any path the session shouldn't record.
 //
-// The deferred Flush guarantees the terminal "done"/"error" event
-// reaches the wire — without it we would rely on the SendStreamWriter
-// caller flushing on closure return, which is true today but an
-// implementation detail of fiber.
+// Every termination path emits both `event: error` (when applicable)
+// and `event: done`, so the browser's sse-close="done" hook fires
+// cleanly regardless of how the stream ended.
+//
+// The deferred Flush guarantees the terminal events reach the wire —
+// without it we would rely on the SendStreamWriter caller flushing on
+// closure return, which is true today but an implementation detail of
+// fiber.
 func pumpStreamEvents(w *bufio.Writer, events <-chan ai.StreamEvent) string {
 	defer func() { _ = w.Flush() }()
 	var assembled strings.Builder
@@ -62,8 +67,10 @@ func pumpStreamEvents(w *bufio.Writer, events <-chan ai.StreamEvent) string {
 			}
 		}
 	}
-	// Channel closed without a terminal Done event — return whatever we
-	// accumulated so the session history still gets the partial reply.
+	// Channel closed without a terminal Done event — emit one ourselves
+	// so the browser's sse-close="done" hook still fires. Return whatever
+	// we accumulated so the session history records the partial reply.
+	writeSSE(w, sseEventDone, "")
 	return assembled.String()
 }
 

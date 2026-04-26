@@ -29,9 +29,10 @@ func TestPumpStreamEvents_assemblesWhenFinalEmpty(t *testing.T) {
 }
 
 // TestPumpStreamEvents_channelCloseWithoutDone covers the path where
-// the model channel closes naturally (no terminal Done event) — pump
-// should still hand back the accumulated text so the session can store
-// the partial reply.
+// the model channel closes naturally (no terminal Done event). Pump
+// must (1) hand back the accumulated text so the session records the
+// partial reply, and (2) synthesize a `event: done` so the browser's
+// sse-close="done" hook still fires.
 func TestPumpStreamEvents_channelCloseWithoutDone(t *testing.T) {
 	ch := make(chan ai.StreamEvent, 1)
 	ch <- ai.StreamEvent{Delta: "partial"}
@@ -41,6 +42,8 @@ func TestPumpStreamEvents_channelCloseWithoutDone(t *testing.T) {
 	w := bufio.NewWriter(&buf)
 	final := pumpStreamEvents(w, ch)
 	require.Equal(t, "partial", final)
+	require.Contains(t, buf.String(), "event: done",
+		"channel-close-without-Done path must still emit a terminating done event")
 }
 
 // TestPumpStreamEvents_clientDisconnectStopsLoop proves that once a
