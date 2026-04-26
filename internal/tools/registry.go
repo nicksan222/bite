@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"maps"
 	"slices"
+	"strings"
 	"sync"
 )
 
@@ -32,12 +33,9 @@ func Register(t Tool) {
 func All() []Tool {
 	regMu.RLock()
 	defer regMu.RUnlock()
-	names := slices.Sorted(maps.Keys(reg))
-	out := make([]Tool, 0, len(names))
-	for _, n := range names {
-		out = append(out, reg[n])
-	}
-	return out
+	return slices.SortedFunc(maps.Values(reg), func(a, b Tool) int {
+		return strings.Compare(a.Name, b.Name)
+	})
 }
 
 // Get returns the tool with the given Name and whether it exists.
