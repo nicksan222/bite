@@ -9,15 +9,18 @@ import (
 	"github.com/nicksan222/bite/internal/ai"
 )
 
-// chatSessionCookie names the cookie that maps a browser to a server-side
-// chat session. We store the conversation history server-side so the
-// htmx-driven chat.html doesn't have to round-trip turns through hidden
-// inputs.
-const chatSessionCookie = "bite_chat"
+const (
+	// chatSessionCookie names the cookie that maps a browser to a
+	// server-side chat session. We store the conversation history
+	// server-side so the htmx-driven chat.html doesn't have to
+	// round-trip turns through hidden inputs.
+	chatSessionCookie = "bite_chat"
 
-// chatSessionTTL is how long an idle session stays alive. Generous
-// because the tab stays open between turns and a thinking user is normal.
-const chatSessionTTL = 6 * time.Hour
+	// chatSessionTTL is how long an idle session stays alive. Generous
+	// because the tab stays open between turns and a thinking user is
+	// normal.
+	chatSessionTTL = 6 * time.Hour
+)
 
 // chatSessionStore holds every active session in memory. Restart loses
 // history, which is acceptable: the dashboard is local-only and a long
