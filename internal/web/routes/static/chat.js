@@ -15,6 +15,12 @@
   const stop = document.getElementById("chat-stop");
   const errorBox = document.getElementById("chat-error");
 
+  // Max height in pixels matches CSS .chat__input max-height (12rem).
+  const INPUT_MAX_PX = 192;
+  // Auto-follow only when the user is near the bottom — otherwise we'd
+  // yank them away while they're reading earlier turns.
+  const FOLLOW_THRESHOLD_PX = 200;
+
   let abortCtl = null;
 
   form.addEventListener("submit", async (e) => {
@@ -32,6 +38,7 @@
     const history = collectHistory();
     appendBubble("user", message);
     input.value = "";
+    autosize();
     input.focus();
     const asst = appendBubble("asst", "");
 
@@ -41,7 +48,7 @@
     try {
       await streamChat({ message, history }, (delta) => {
         asst.textContent += delta;
-        transcript.scrollTop = transcript.scrollHeight;
+        followLatest();
       }, abortCtl.signal);
     } catch (err) {
       // User-initiated aborts surface as DOMException("AbortError"); they
@@ -62,8 +69,10 @@
     if (abortCtl) abortCtl.abort();
   });
 
+  input.addEventListener("input", autosize);
   input.addEventListener("keydown", (e) => {
-    if (e.key === "Enter" && (e.metaKey || e.ctrlKey)) {
+    // Plain Enter sends; Shift+Enter inserts a newline. Mirrors ChatGPT.
+    if (e.key === "Enter" && !e.shiftKey && !e.isComposing) {
       e.preventDefault();
       form.requestSubmit();
     }
@@ -75,20 +84,51 @@
     stop.hidden = !busy;
   }
 
+  // autosize grows the textarea to fit its content up to a hard cap.
+  // Reset to "auto" first so scrollHeight reflects the natural height
+  // even when the user has just deleted lines.
+  function autosize() {
+    input.style.height = "auto";
+    input.style.height = Math.min(input.scrollHeight, INPUT_MAX_PX) + "px";
+  }
+
+  // appendBubble builds daisyUI's chat structure:
+  //   <div class="chat chat-end|chat-start" data-role="...">
+  //     <div class="chat-bubble">text</div>
+  //   </div>
+  // Returns the inner .chat-bubble so the caller can append streamed
+  // delta text directly into it.
   function appendBubble(role, text) {
-    const div = document.createElement("div");
-    div.className = "bubble bubble--" + role;
-    div.dataset.role = role === "user" ? "user" : "assistant";
-    div.textContent = text;
-    transcript.appendChild(div);
-    transcript.scrollTop = transcript.scrollHeight;
-    return div;
+    const isUser = role === "user";
+    const wrapper = document.createElement("div");
+    wrapper.className = "chat " + (isUser ? "chat-end" : "chat-start");
+    wrapper.dataset.role = isUser ? "user" : "assistant";
+
+    const bubble = document.createElement("div");
+    bubble.className = "chat-bubble" + (isUser ? " chat-bubble-primary" : "");
+    bubble.textContent = text;
+
+    wrapper.appendChild(bubble);
+    transcript.appendChild(wrapper);
+    followLatest();
+    return bubble;
+  }
+
+  // followLatest scrolls the page to the bottom only when the user is
+  // already near it. Avoids the "I'm reading history, stop dragging me
+  // back to the live tokens" anti-pattern.
+  function followLatest() {
+    const el = document.scrollingElement || document.documentElement;
+    const distance = el.scrollHeight - el.scrollTop - el.clientHeight;
+    if (distance < FOLLOW_THRESHOLD_PX) {
+      el.scrollTop = el.scrollHeight;
+    }
   }
 
   function collectHistory() {
-    return Array.from(transcript.querySelectorAll(".bubble")).map((el) => ({
+    return Array.from(transcript.querySelectorAll(".chat[data-role]")).map((el) => ({
       role: el.dataset.role,
-      content: el.textContent || "",
+      content: (el.querySelector(".chat-bubble") || el).textContent || "",
     }));
   }
 

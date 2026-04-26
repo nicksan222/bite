@@ -1,33 +1,29 @@
 {{define "content"}}
-<div class="stack">
-  <section class="card">
-    <header class="card__header">
-      <h2 class="card__title">Registry</h2>
-      <p class="card__desc">
-        Every tool the CLI knows is exposed here over HTTP. POST <code>/api/tools/&lt;name&gt;</code>
-        with a JSON body of params, or hit <code>/htmx/tool/&lt;name&gt;</code> for an HTML fragment.
-      </p>
-    </header>
-  </section>
-  <div class="grid grid--2">
+<div class="max-w-5xl mx-auto px-4 py-8 space-y-6">
+  <div>
+    <h1 class="text-2xl font-semibold tracking-tight">Tool registry</h1>
+    <p class="text-base-content/70 mt-1">
+      {{len .Tools}} tools exposed over HTTP. POST <code>/api/tools/&lt;name&gt;</code>
+      with JSON, or hit <code>/htmx/tool/&lt;name&gt;</code> for HTML.
+    </p>
+  </div>
+  <div class="grid gap-4 md:grid-cols-2">
     {{range .Tools}}
-    <section class="card">
-      <header class="card__header">
-        <h3 class="card__title tool-card__name">{{.Name}}</h3>
-        <p class="card__desc">{{.Summary}}</p>
-      </header>
-      {{if .Params}}
-      <div class="card__body">
-        <ul class="tool-params">
+    <div class="card bg-base-200">
+      <div class="card-body gap-3">
+        <h2 class="card-title font-mono text-base">{{.Name}}</h2>
+        <p class="text-base-content/80">{{.Summary}}</p>
+        {{if .Params}}
+        <div class="flex flex-wrap gap-2">
           {{range .Params}}
-          <li>
-            <span class="tool-params__name">{{.Name}}</span><span class="tool-params__type">: {{.Type}}</span>{{if .Required}}<span class="tool-params__required"> (required)</span>{{end}}
-          </li>
+          <span class="badge font-mono {{if .Required}}badge-warning{{else}}badge-outline{{end}}">
+            {{.Name}}<span class="opacity-60">:{{.Type}}</span>
+          </span>
           {{end}}
-        </ul>
+        </div>
+        {{end}}
       </div>
-      {{end}}
-    </section>
+    </div>
     {{end}}
   </div>
 </div>

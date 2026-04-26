@@ -1,25 +1,25 @@
 {{define "content"}}
-<div class="grid grid--2">
-  {{range .Cards}}
-  <section class="card">
-    <header class="card__header">
-      <h2 class="card__title">{{.Title}}</h2>
-      <p class="card__desc">{{.Desc}}</p>
-    </header>
-    <div class="card__body">
-      <button class="btn btn--outline btn--sm"
-              hx-get="/htmx/tool/{{.Tool}}"
-              hx-target="#out-{{.Tool}}"
-              hx-swap="innerHTML"
-              hx-indicator="#out-{{.Tool}}-spin">
-        Refresh <span id="out-{{.Tool}}-spin" class="htmx-indicator muted">…</span>
-      </button>
-      <div id="out-{{.Tool}}" class="muted" style="margin-top:.75rem;font-size:.85rem;"
-           hx-get="/htmx/tool/{{.Tool}}" hx-trigger="load" hx-swap="innerHTML">
-        loading…
+<div class="max-w-5xl mx-auto px-4 py-8 space-y-6">
+  <div>
+    <h1 class="text-2xl font-semibold tracking-tight">Dashboard</h1>
+    <p class="text-base-content/70 mt-1">Live snapshots of your day, week, and goals.</p>
+  </div>
+  <div class="grid gap-4 md:grid-cols-2">
+    {{range .Cards}}
+    <div class="card bg-base-200">
+      <div class="card-body gap-3">
+        <div class="space-y-1">
+          <h2 class="card-title">{{.Title}}</h2>
+          <p class="text-base-content/70">{{.Desc}}</p>
+        </div>
+        <div hx-get="/htmx/tool/{{.Tool}}"
+             hx-trigger="load, every 30s"
+             hx-swap="innerHTML">
+          <span class="loading loading-dots loading-sm text-base-content/60"></span>
+        </div>
       </div>
     </div>
-  </section>
-  {{end}}
+    {{end}}
+  </div>
 </div>
 {{end}}

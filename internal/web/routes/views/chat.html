@@ -1,27 +1,25 @@
 {{define "content"}}
-<section class="card">
-  <header class="card__header">
-    <h2 class="card__title">Chat with bite</h2>
-    <p class="card__desc">Streamed via /api/chat. The model can call any registered tool while answering.</p>
-  </header>
-  <div class="card__body">
-    <div class="chat">
-      <div id="chat-transcript" class="chat__transcript" aria-live="polite">
-        <div id="chat-empty" class="chat__empty">
-          Send a message to start. Try <code>"log 200g of pasta with pesto"</code>.
-        </div>
-      </div>
-      <div id="chat-error" class="bite-error" hidden></div>
-      <form id="chat-form" class="chat__composer" autocomplete="off">
-        <textarea id="chat-input" class="textarea" name="message"
-                  placeholder="Ask anything… (⌘/Ctrl+Enter to send)"></textarea>
-        <div class="chat__composer-actions">
-          <button id="chat-send" type="submit" class="btn">Send</button>
-          <button id="chat-stop" type="button" class="btn btn--outline" hidden>Stop</button>
-        </div>
-      </form>
+<div class="max-w-3xl mx-auto px-4 flex flex-col" style="min-height: calc(100vh - 4rem)">
+
+  <div id="chat-transcript" class="flex-1 flex flex-col gap-5 py-6" aria-live="polite">
+    <div id="chat-empty" class="flex-1 flex flex-col items-center justify-center text-center gap-2 px-4">
+      <h1 class="text-3xl font-semibold tracking-tight">What's on your plate?</h1>
+      <p class="text-base-content/70 max-w-md">
+        Ask anything about food, log a meal, or check your day.
+      </p>
     </div>
   </div>
-</section>
+
+  <div id="chat-error" role="alert" class="alert alert-error mb-3" hidden></div>
+
+  <form id="chat-form" class="sticky bottom-4 mb-4 bg-base-200 border border-base-300 rounded-xl flex items-end gap-2 p-2 pl-4" autocomplete="off">
+    <textarea id="chat-input" name="message" rows="1"
+              class="flex-1 resize-none bg-transparent border-none outline-none py-2 leading-snug placeholder:text-base-content/50"
+              placeholder="Message bite…" style="max-height: 12rem"></textarea>
+    <button id="chat-stop" type="button" class="btn btn-sm" hidden>Stop</button>
+    <button id="chat-send" type="submit" class="btn btn-primary btn-sm">Send</button>
+  </form>
+
+</div>
 <script src="/static/chat.js" defer></script>
 {{end}}

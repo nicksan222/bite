@@ -1,62 +1,52 @@
 {{define "content"}}
-<div class="grid grid--2">
-  <section class="card">
-    <header class="card__header">
-      <h2 class="card__title">Log a meal</h2>
-      <p class="card__desc">Submits to /htmx/tool/log_meal — same tool as the CLI.</p>
-    </header>
-    <div class="card__body">
-      <form class="form"
-            hx-post="/htmx/tool/log_meal"
-            hx-target="#log-result"
-            hx-swap="innerHTML"
-            hx-on::after-request="if(event.detail.successful)this.reset()">
-        <label class="field">
-          <span class="field__label">Title</span>
-          <input class="input" name="title" placeholder="Pasta with pesto" required>
-        </label>
-        <div class="grid grid--macros">
-          <label class="field">
-            <span class="field__label">Calories</span>
-            <input class="input" name="kcal" type="number" step="any">
-          </label>
-          <label class="field">
-            <span class="field__label">Protein (g)</span>
-            <input class="input" name="protein_g" type="number" step="any">
-          </label>
-          <label class="field">
-            <span class="field__label">Carbs (g)</span>
-            <input class="input" name="carbs_g" type="number" step="any">
-          </label>
-          <label class="field">
-            <span class="field__label">Fat (g)</span>
-            <input class="input" name="fat_g" type="number" step="any">
-          </label>
-        </div>
-        <div class="row">
-          <button type="submit" class="btn">Log meal</button>
-          <span class="htmx-indicator muted">saving…</span>
-        </div>
-      </form>
-      <div id="log-result" style="margin-top:1rem"></div>
-    </div>
-  </section>
+<div class="max-w-5xl mx-auto px-4 py-8 space-y-6">
+  <div>
+    <h1 class="text-2xl font-semibold tracking-tight">Meals</h1>
+    <p class="text-base-content/70 mt-1">Log a meal or check today's intake.</p>
+  </div>
 
-  <section class="card">
-    <header class="card__header">
-      <h2 class="card__title">Today</h2>
-      <p class="card__desc">
-        Loaded by <code>hx-get</code> against /htmx/tool/meals_today, refreshed every 30s.
-      </p>
-    </header>
-    <div class="card__body">
-      <div hx-get="/htmx/tool/meals_today"
-           hx-trigger="load, every 30s, refresh from:body"
-           hx-swap="innerHTML"
-           class="muted">
-        loading…
+  <div class="grid gap-4 lg:grid-cols-2">
+
+    <div class="card bg-base-200">
+      <div class="card-body gap-4">
+        <div class="space-y-1">
+          <h2 class="card-title">Log a meal</h2>
+          <p class="text-base-content/70">Submits to <code>/htmx/tool/log_meal</code>.</p>
+        </div>
+        <form class="flex flex-col gap-3"
+              hx-post="/htmx/tool/log_meal"
+              hx-target="#log-result"
+              hx-swap="innerHTML"
+              hx-on::after-request="if(event.detail.successful)this.reset()">
+          <input type="text" name="title" placeholder="Title" required class="input w-full">
+          <div class="grid grid-cols-2 gap-3">
+            <input type="number" step="any" name="kcal"      placeholder="Calories"    class="input">
+            <input type="number" step="any" name="protein_g" placeholder="Protein (g)" class="input">
+            <input type="number" step="any" name="carbs_g"   placeholder="Carbs (g)"   class="input">
+            <input type="number" step="any" name="fat_g"     placeholder="Fat (g)"     class="input">
+          </div>
+          <div class="flex justify-end">
+            <button type="submit" class="btn btn-primary">Log meal</button>
+          </div>
+        </form>
+        <div id="log-result" class="empty:hidden"></div>
       </div>
     </div>
-  </section>
+
+    <div class="card bg-base-200">
+      <div class="card-body gap-3">
+        <div class="space-y-1">
+          <h2 class="card-title">Today</h2>
+          <p class="text-base-content/70">Refreshes every 30 seconds.</p>
+        </div>
+        <div hx-get="/htmx/tool/meals_today"
+             hx-trigger="load, every 30s, refresh from:body"
+             hx-swap="innerHTML">
+          <span class="loading loading-dots loading-sm text-base-content/60"></span>
+        </div>
+      </div>
+    </div>
+
+  </div>
 </div>
 {{end}}

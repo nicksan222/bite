@@ -32,31 +32,36 @@ func htmxTool(d Deps) fiber.Handler {
 		if err != nil {
 			var nf NotFoundError
 			if errors.As(err, &nf) {
-				return c.Status(http.StatusNotFound).
-					Type("html").
-					SendString(`<div class="bite-error">tool not found: ` + html.EscapeString(name) + `</div>`)
+				return c.Status(http.StatusNotFound).Type("html").SendString(htmlAlert("tool not found: " + name))
 			}
-			return c.Status(http.StatusBadRequest).
-				Type("html").
-				SendString(`<div class="bite-error">` + html.EscapeString(err.Error()) + `</div>`)
+			return c.Status(http.StatusBadRequest).Type("html").SendString(htmlAlert(err.Error()))
 		}
 		return c.Type("html").SendString(renderResultHTML(res))
 	}
 }
 
+// htmlAlert wraps a message in daisyUI's alert-error component. The
+// markup is small enough to inline; centralising means the handler's
+// error branches can't drift from one another.
+func htmlAlert(msg string) string {
+	return `<div role="alert" class="alert alert-error"><span>` + html.EscapeString(msg) + `</span></div>`
+}
+
 // renderResultHTML produces the HTML fragment HTMX swaps in. Hand-rolled
 // (no template) because the structure is small, escape behavior is
-// load-bearing, and html.EscapeString is the single primitive.
+// load-bearing, and html.EscapeString is the single primitive. Uses
+// Tailwind / daisyUI classes so the fragment renders consistently with
+// the rest of the dashboard.
 func renderResultHTML(r Result) string {
 	var b strings.Builder
-	b.WriteString(`<div class="bite-result">`)
+	b.WriteString(`<div>`)
 	if r.Text != "" {
-		b.WriteString(`<pre class="bite-result__text">`)
+		b.WriteString(`<pre class="font-mono text-sm whitespace-pre-wrap leading-relaxed">`)
 		b.WriteString(html.EscapeString(r.Text))
 		b.WriteString(`</pre>`)
 	}
 	if r.Table != nil && len(r.Table.Headers) > 0 {
-		b.WriteString(`<table class="bite-result__table"><thead><tr>`)
+		b.WriteString(`<div class="overflow-x-auto mt-2"><table class="table table-sm"><thead><tr>`)
 		for _, h := range r.Table.Headers {
 			b.WriteString(`<th>`)
 			b.WriteString(html.EscapeString(h))
@@ -82,7 +87,7 @@ func renderResultHTML(r Result) string {
 			}
 			b.WriteString(`</tr></tfoot>`)
 		}
-		b.WriteString(`</table>`)
+		b.WriteString(`</table></div>`)
 	}
 	b.WriteString(`</div>`)
 	return b.String()
