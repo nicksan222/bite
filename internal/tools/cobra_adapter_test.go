@@ -178,6 +178,70 @@ func TestCountingWriter_tracksBytes(t *testing.T) {
 	assert.Equal(t, 11, cw.n)
 }
 
+func TestParseString_allTypes(t *testing.T) {
+	v, err := parseString(ParamString, "hi")
+	require.NoError(t, err)
+	assert.Equal(t, "hi", v)
+
+	v, err = parseString(ParamInt, "42")
+	require.NoError(t, err)
+	assert.Equal(t, int64(42), v)
+
+	v, err = parseString(ParamFloat, "3.14")
+	require.NoError(t, err)
+	assert.Equal(t, 3.14, v)
+
+	v, err = parseString(ParamBool, "true")
+	require.NoError(t, err)
+	assert.Equal(t, true, v)
+
+	v, err = parseString(ParamStringList, "x")
+	require.NoError(t, err)
+	assert.Equal(t, []string{"x"}, v)
+}
+
+func TestParseString_invalidValues(t *testing.T) {
+	_, err := parseString(ParamInt, "abc")
+	assert.Error(t, err)
+	_, err = parseString(ParamFloat, "abc")
+	assert.Error(t, err)
+	_, err = parseString(ParamBool, "yesyes")
+	assert.Error(t, err)
+}
+
+func TestRegisterCobra_bindsAllFlagTypes(t *testing.T) {
+	withCleanRegistry(t, func() {
+		var seen Args
+		Register(Tool{
+			Name: "all_types", Summary: "s", Description: "d",
+			Params: []Param{
+				{Name: "s", Type: ParamString, Default: "default-s"},
+				{Name: "i", Type: ParamInt, Default: int64(7)},
+				{Name: "f", Type: ParamFloat, Default: 1.5},
+				{Name: "b", Type: ParamBool, Default: true},
+				{Name: "xs", Type: ParamStringList},
+			},
+			Run: func(_ context.Context, _ Deps, a Args) (Result, error) {
+				seen = a
+				return Result{Text: "ok"}, nil
+			},
+		})
+
+		root := &cobra.Command{Use: "test"}
+		RegisterCobra(root, StaticDeps(Deps{}))
+
+		_, err := runCmd(t, root, "all_types",
+			"--s=hello", "--i=99", "--f=2.5", "--b=false",
+			"--xs=a", "--xs=b")
+		require.NoError(t, err)
+		assert.Equal(t, "hello", seen.String("s"))
+		assert.Equal(t, int64(99), seen.Int("i"))
+		assert.Equal(t, 2.5, seen.Float("f"))
+		assert.False(t, seen.Bool("b"))
+		assert.Equal(t, []string{"a", "b"}, seen.StringList("xs"))
+	})
+}
+
 func TestRenderForCobra_textAndTable(t *testing.T) {
 	var buf bytes.Buffer
 	renderForCobra(&buf, Result{
