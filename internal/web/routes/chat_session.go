@@ -94,6 +94,10 @@ func (s *sessionStore) appendTurn(id, userMsg, assistantMsg string) {
 	sess.last = time.Now()
 }
 
+// pruneLocked drops every session whose last-touch is older than
+// chatSessionTTL. The "Locked" suffix marks the contract: callers must
+// hold s.mu. Called from ensure() so eviction happens on the request
+// path — no background goroutine, no leaks if traffic stops.
 func (s *sessionStore) pruneLocked() {
 	cutoff := time.Now().Add(-chatSessionTTL)
 	for id, sess := range s.sessions {
