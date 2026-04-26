@@ -19,7 +19,7 @@ import (
 func htmxTool(d Deps) fiber.Handler {
 	return func(c fiber.Ctx) error {
 		if d.InvokeTool == nil {
-			return jsonError(c, http.StatusServiceUnavailable, "tool invocation not configured")
+			return htmlError(c, http.StatusServiceUnavailable, "tool invocation not configured")
 		}
 		name := c.Params("name")
 		raw := mergeArgs(c.Queries(), formArgs(c))

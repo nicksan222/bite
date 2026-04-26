@@ -60,6 +60,18 @@ func TestHTMX_htmlAlert_escapes(t *testing.T) {
 	require.Contains(t, out, `&lt;script&gt;`)
 }
 
+// TestHTMX_unconfiguredDepsReturnsHTML pins that an HTMX endpoint never
+// returns JSON when its hx-target is expecting an HTML fragment — the
+// 503 case must still produce an alert markup, not a JSON envelope that
+// would render as raw text inside the swapped element.
+func TestHTMX_unconfiguredDepsReturnsHTML(t *testing.T) {
+	app := newApp(Deps{})
+	resp, err := app.Test(httptest.NewRequest(http.MethodGet, "/htmx/tool/x", nil))
+	require.NoError(t, err)
+	require.Equal(t, http.StatusServiceUnavailable, resp.StatusCode)
+	require.Contains(t, resp.Header.Get("Content-Type"), "text/html")
+}
+
 func TestHTMX_tool_endpoint(t *testing.T) {
 	app := newApp(Deps{
 		InvokeTool: func(_ context.Context, name string, raw map[string]any) (Result, error) {
