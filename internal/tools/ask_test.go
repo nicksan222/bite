@@ -102,6 +102,18 @@ func TestAsk_finalOnlyWhenNoDeltas(t *testing.T) {
 	assert.Equal(t, "answer", res.Text)
 }
 
+func TestAsk_attachesImages(t *testing.T) {
+	ctx := context.Background()
+	deps := freshDeps(t)
+	deps.AI = stubAI{resp: "ok"}
+
+	res, err := MustGet("ask").Run(ctx, deps, NewArgs(map[string]any{
+		"image": []any{"https://example.com/x.jpg", "/local/y.jpg"},
+	}))
+	require.NoError(t, err)
+	assert.Equal(t, "ok", res.Text)
+}
+
 func TestAsk_systemOverride(t *testing.T) {
 	ctx := context.Background()
 	deps := freshDeps(t)
