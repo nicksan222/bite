@@ -17,13 +17,47 @@ import (
 // are exact.
 func TestHTMX_renderResultHTML_escapes(t *testing.T) {
 	out := renderResultHTML(Result{
-		Text:  "<bad>",
-		Table: &Table{Headers: []string{"col"}, Rows: [][]string{{"<row>"}}},
+		Text: "<bad>",
+		Table: &Table{
+			Headers: []string{"<h>"},
+			Rows:    [][]string{{"<row>"}},
+			Footer:  []string{"<foot>"},
+		},
 	})
-	require.Contains(t, out, "&lt;bad&gt;")
-	require.Contains(t, out, "&lt;row&gt;")
-	require.NotContains(t, out, "<bad>")
-	require.NotContains(t, out, "<row>")
+	for _, raw := range []string{"<bad>", "<h>", "<row>", "<foot>"} {
+		require.NotContains(t, out, raw, "raw HTML must never reach the swapped fragment")
+	}
+	for _, escaped := range []string{"&lt;bad&gt;", "&lt;h&gt;", "&lt;row&gt;", "&lt;foot&gt;"} {
+		require.Contains(t, out, escaped)
+	}
+}
+
+// TestHTMX_renderResultHTML_emptyResult locks in the degenerate cases:
+// no fields → an empty wrapper div, never a stray <pre> or <table>.
+func TestHTMX_renderResultHTML_emptyResult(t *testing.T) {
+	require.Equal(t, "<div></div>", renderResultHTML(Result{}))
+}
+
+// TestHTMX_renderResultHTML_tableOnly proves the text branch is optional
+// — earlier hand-rolled code emitted <pre></pre> on an empty Text. The
+// template form must NOT.
+func TestHTMX_renderResultHTML_tableOnly(t *testing.T) {
+	out := renderResultHTML(Result{
+		Table: &Table{Headers: []string{"a"}, Rows: [][]string{{"1"}}},
+	})
+	require.NotContains(t, out, "<pre")
+	require.Contains(t, out, "<table")
+	require.Contains(t, out, "<th>a</th>")
+	require.Contains(t, out, "<td>1</td>")
+}
+
+// TestHTMX_htmlAlert_escapes pins that the alert helper escapes its
+// payload — error messages can include arbitrary tool output.
+func TestHTMX_htmlAlert_escapes(t *testing.T) {
+	out := htmlAlert(`<script>alert(1)</script>`)
+	require.Contains(t, out, `alert alert-error`)
+	require.NotContains(t, out, `<script>`)
+	require.Contains(t, out, `&lt;script&gt;`)
 }
 
 func TestHTMX_tool_endpoint(t *testing.T) {

@@ -1,10 +1,11 @@
 package routes
 
 import (
+	"bytes"
 	"errors"
 	"html"
+	"html/template"
 	"net/http"
-	"strings"
 
 	"github.com/gofiber/fiber/v3"
 )
@@ -42,53 +43,39 @@ func htmxTool(d Deps) fiber.Handler {
 
 // htmlAlert wraps a message in daisyUI's alert-error component. The
 // markup is small enough to inline; centralising means the handler's
-// error branches can't drift from one another.
+// error branches can't drift from one another. html.EscapeString is
+// safe here because the sole interpolation is in plain text content.
 func htmlAlert(msg string) string {
 	return `<div role="alert" class="alert alert-error"><span>` + html.EscapeString(msg) + `</span></div>`
 }
 
-// renderResultHTML produces the HTML fragment HTMX swaps in. Hand-rolled
-// (no template) because the structure is small, escape behavior is
-// load-bearing, and html.EscapeString is the single primitive. Uses
-// Tailwind / daisyUI classes so the fragment renders consistently with
-// the rest of the dashboard.
+// resultTmpl renders a tool Result as an HTMX fragment. html/template
+// auto-escapes every {{ .X }} interpolation in HTML context, so adding a
+// new field cannot accidentally introduce an XSS hole. Tailwind / daisyUI
+// classes keep the fragment visually consistent with the dashboard.
+var resultTmpl = template.Must(template.New("result").Parse(
+	`<div>` +
+		`{{- if .Text -}}` +
+		`<pre class="font-mono text-sm whitespace-pre-wrap leading-relaxed">{{.Text}}</pre>` +
+		`{{- end -}}` +
+		`{{- with .Table -}}` +
+		`{{- if .Headers -}}` +
+		`<div class="overflow-x-auto mt-2"><table class="table table-sm">` +
+		`<thead><tr>{{range .Headers}}<th>{{.}}</th>{{end}}</tr></thead>` +
+		`<tbody>{{range .Rows}}<tr>{{range .}}<td>{{.}}</td>{{end}}</tr>{{end}}</tbody>` +
+		`{{- if .Footer -}}` +
+		`<tfoot><tr>{{range .Footer}}<td>{{.}}</td>{{end}}</tr></tfoot>` +
+		`{{- end -}}` +
+		`</table></div>` +
+		`{{- end -}}` +
+		`{{- end -}}` +
+		`</div>`,
+))
+
+// renderResultHTML produces the HTML fragment HTMX swaps in.
 func renderResultHTML(r Result) string {
-	var b strings.Builder
-	b.WriteString(`<div>`)
-	if r.Text != "" {
-		b.WriteString(`<pre class="font-mono text-sm whitespace-pre-wrap leading-relaxed">`)
-		b.WriteString(html.EscapeString(r.Text))
-		b.WriteString(`</pre>`)
-	}
-	if r.Table != nil && len(r.Table.Headers) > 0 {
-		b.WriteString(`<div class="overflow-x-auto mt-2"><table class="table table-sm"><thead><tr>`)
-		for _, h := range r.Table.Headers {
-			b.WriteString(`<th>`)
-			b.WriteString(html.EscapeString(h))
-			b.WriteString(`</th>`)
-		}
-		b.WriteString(`</tr></thead><tbody>`)
-		for _, row := range r.Table.Rows {
-			b.WriteString(`<tr>`)
-			for _, cell := range row {
-				b.WriteString(`<td>`)
-				b.WriteString(html.EscapeString(cell))
-				b.WriteString(`</td>`)
-			}
-			b.WriteString(`</tr>`)
-		}
-		b.WriteString(`</tbody>`)
-		if len(r.Table.Footer) > 0 {
-			b.WriteString(`<tfoot><tr>`)
-			for _, cell := range r.Table.Footer {
-				b.WriteString(`<td>`)
-				b.WriteString(html.EscapeString(cell))
-				b.WriteString(`</td>`)
-			}
-			b.WriteString(`</tr></tfoot>`)
-		}
-		b.WriteString(`</table></div>`)
-	}
-	b.WriteString(`</div>`)
-	return b.String()
+	var buf bytes.Buffer
+	// Execution can only fail on writer errors; bytes.Buffer never errors.
+	_ = resultTmpl.Execute(&buf, r)
+	return buf.String()
 }
