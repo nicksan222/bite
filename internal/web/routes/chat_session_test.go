@@ -17,6 +17,20 @@ func TestSessionStore_appendTurn_unknownIDIsNoop(t *testing.T) {
 	})
 }
 
+// TestSessionStore_appendTurn_refreshesLastTouched proves appendTurn
+// bumps sess.last. Without this, a session that takes most of the TTL
+// to assemble its first reply could be pruned right after the SSE
+// stream completes — losing the asst message that was just appended.
+func TestSessionStore_appendTurn_refreshesLastTouched(t *testing.T) {
+	stale := time.Now().Add(-2 * chatSessionTTL)
+	s := &sessionStore{sessions: map[string]*chatSession{
+		"s1": {last: stale},
+	}}
+	s.appendTurn("s1", "u", "a")
+	require.True(t, s.sessions["s1"].last.After(stale),
+		"appendTurn must refresh last so the just-completed turn isn't pruned next")
+}
+
 // TestSessionStore_pruneEvictsIdle proves pruneLocked actually removes
 // entries past the TTL — without this, sessions would leak forever.
 func TestSessionStore_pruneEvictsIdle(t *testing.T) {
