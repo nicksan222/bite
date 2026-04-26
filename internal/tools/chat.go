@@ -35,9 +35,10 @@ no model call). Type /help to list every available slash command.`,
 }
 
 // runChat is the single source of truth for launching the chat TUI. Both
-// `bite` (via RunChatTUI) and `bite chat` (via the cobra adapter) end up
-// here, so there's exactly one place that wires the registry into stream
-// options + slash dispatch and runs the bubbletea program.
+// `bite` (via SetDefault) and `bite chat` (via the named subcommand) reach
+// here through the same cobra closure, so there's exactly one place that
+// wires the registry into stream options + slash dispatch and runs the
+// bubbletea program.
 //
 // Validates the AI client up front via Deps.RequireAI so a missing
 // ANTHROPIC_API_KEY surfaces before the TUI opens.

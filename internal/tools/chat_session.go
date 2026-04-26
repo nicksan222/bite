@@ -11,23 +11,6 @@ import (
 	"github.com/nicksan222/bite/internal/db"
 )
 
-// RunChatTUI is the no-cobra entry point used by `bite` (no subcommand). It
-// reuses CobraDepsProvider for deps so there's exactly ONE deps-builder
-// shared with the cobra path, then dispatches through the registered chat
-// Tool — the only function that actually knows how to launch the TUI.
-func RunChatTUI(ctx context.Context, resumeID int64) error {
-	deps, cleanup, err := CobraDepsProvider(ctx)
-	if err != nil {
-		return err
-	}
-	if cleanup != nil {
-		defer cleanup()
-	}
-	chat := MustGet("chat")
-	_, err = chat.Run(ctx, deps, NewArgsForTool(chat, map[string]any{"resume": resumeID}))
-	return err
-}
-
 // PrepareSession resumes an existing conversation when resumeID > 0, otherwise
 // creates a fresh one. Returns the conversation ID and any prior history.
 //

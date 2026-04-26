@@ -8,8 +8,8 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
-// stubChatEnv sets every env var RunChatTUI reads to sane defaults; pass
-// overrides to flip individual values (e.g. an empty key, a bad DSN).
+// stubChatEnv sets every env var the chat-launch path reads to sane defaults;
+// pass overrides to flip individual values (e.g. an empty key, a bad DSN).
 func stubChatEnv(t *testing.T, overrides map[string]string) {
 	t.Helper()
 	defaults := map[string]string{
@@ -25,29 +25,45 @@ func stubChatEnv(t *testing.T, overrides map[string]string) {
 	}
 }
 
-func TestRunChatTUI_configError(t *testing.T) {
+// launchChat mirrors the production no-subcommand path: CobraDepsProvider →
+// chat tool's Run. Tests use this so they exercise exactly the same chain
+// `bite` walks at runtime, without going through cobra's parser.
+func launchChat(ctx context.Context, resumeID int64) error {
+	deps, cleanup, err := CobraDepsProvider(ctx)
+	if err != nil {
+		return err
+	}
+	if cleanup != nil {
+		defer cleanup()
+	}
+	chat := MustGet("chat")
+	_, err = chat.Run(ctx, deps, NewArgsForTool(chat, map[string]any{"resume": resumeID}))
+	return err
+}
+
+func TestLaunchChat_configError(t *testing.T) {
 	stubChatEnv(t, map[string]string{"BITE_MAX_TOKENS": "not-a-number"})
-	require.Error(t, RunChatTUI(context.Background(), 0))
+	require.Error(t, launchChat(context.Background(), 0))
 }
 
-func TestRunChatTUI_openStoreError(t *testing.T) {
+func TestLaunchChat_openStoreError(t *testing.T) {
 	stubChatEnv(t, map[string]string{"BITE_DB": "/tmp"}) // directory, not a file
-	require.Error(t, RunChatTUI(context.Background(), 0))
+	require.Error(t, launchChat(context.Background(), 0))
 }
 
-func TestRunChatTUI_missingKey(t *testing.T) {
+func TestLaunchChat_missingKey(t *testing.T) {
 	stubChatEnv(t, map[string]string{"ANTHROPIC_API_KEY": ""})
-	require.Error(t, RunChatTUI(context.Background(), 0))
+	require.Error(t, launchChat(context.Background(), 0))
 }
 
-func TestRunChatTUI_resumeNotFound(t *testing.T) {
+func TestLaunchChat_resumeNotFound(t *testing.T) {
 	stubChatEnv(t, nil)
-	require.Error(t, RunChatTUI(context.Background(), 9999))
+	require.Error(t, launchChat(context.Background(), 9999))
 }
 
-func TestRunChatTUI_noTTY(t *testing.T) {
+func TestLaunchChat_noTTY(t *testing.T) {
 	stubChatEnv(t, nil)
-	if RunChatTUI(context.Background(), 0) == nil {
+	if launchChat(context.Background(), 0) == nil {
 		t.Skip("running in TTY environment — skip non-TTY coverage test")
 	}
 }

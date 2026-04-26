@@ -62,16 +62,17 @@ internal/
 |---|---|---|
 | **Domain action / chat tool / slash command / CLI subcommand** | `internal/tools/<name>.go` (+ `<name>_test.go`) | `tools.Register(...)` in `init()` — auto-wires AI tool spec, cobra command, slash handler, system-prompt entry |
 | **Doctor health check** | `internal/tools/checks_<concern>.go` | `tools.RegisterCheck(...)` in `init()` — auto-extends `bite doctor` and `bite doctor --help` |
-| TUI screen | `internal/tui/<name>.go` (program) + `internal/tools/run_<name>_tui.go` (launcher) | mirror `RunChatTUI`'s shape — config, store, AI client, then `tui.New(...).Run()` |
+| TUI screen | `internal/tui/<name>.go` (program) + register a launcher Tool in `internal/tools/<name>.go` (use `SkipAI`/`SkipSlash` if cobra-only, like chat) | the cobra-adapter passes `Deps` into your tool's `Run`; build `tui.New(...).Run()` from there |
 | DB table | `internal/db/migrations/000N_*.sql` + `internal/db/queries/<entity>.sql` | `make sqlc` |
 | Store method | method on `*db.Store` in `internal/db/store.go` | wrap one or more sqlc calls |
 | Config knob | one struct field with `env:"…"` tags in `internal/config/config.go` | nothing else |
 | AI capability | function in `internal/ai/` (e.g. `analyze.go`) using the `*Client` | — |
 | Media handler | file in `internal/media/` (e.g. another transcription provider) | — |
 
-The `internal/cli/` folder is reserved for the rootCmd and thin cobra
-delegates that call `tools.RunFooTUI`-shaped launchers. Anything else
-belongs in `internal/tools/`.
+The `internal/cli/` folder owns only the rootCmd struct + `Execute`. The
+no-arg `bite` invocation is wired to the `chat` tool by `tools.SetDefault`
+— there is no hand-written `RunE` in cli/. Anything that looks like a
+subcommand belongs in `internal/tools/`.
 
 **One tool / one command per file.** If you find yourself putting two
 `tools.Register` calls or two `cobra.Command`s in one file, split it.
@@ -98,9 +99,9 @@ tools.Register(tools.Tool{
 
 Adapters consume the registry:
 
-- `tools.AITools(deps)` → `[]ai.Tool` for `ai.WithTools` (called by `tools.RunChatTUI`)
+- `tools.AITools(deps)` → `[]ai.Tool` for `ai.WithTools` (called by the chat tool's `Run`)
 - `tools.RegisterCobra(rootCmd, provider)` → cobra subcommands (called by `cli/root.go`)
-- `tools.NewSlashHandler(deps)` → TUI slash dispatcher (called by `tools.RunChatTUI`)
+- `tools.NewSlashHandler(deps)` → TUI slash dispatcher (called by the chat tool's `Run`)
 - `tools.BuildSystemPrompt(custom)` → assembles persona + appendix (called by `tools.OpenAIClient`)
 - `tools.Checks()` → doctor's check list (`bite doctor` and `bite doctor --help` enumerate the registry)
 
