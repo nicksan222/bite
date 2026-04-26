@@ -17,12 +17,12 @@
   <header class="navbar bg-base-100 sticky top-0 z-30 px-4">
     <div class="max-w-5xl w-full mx-auto flex items-center gap-6">
       <a href="/" class="font-semibold tracking-tight text-base">bite</a>
-      <nav class="ml-auto">
+      <nav class="ml-auto" aria-label="Primary">
         <ul class="menu menu-horizontal gap-1 text-sm p-0">
-          <li><a href="/"          class="{{if eq .Active "chat"}}menu-active{{end}}">Chat</a></li>
-          <li><a href="/dashboard" class="{{if eq .Active "dashboard"}}menu-active{{end}}">Dashboard</a></li>
-          <li><a href="/meals"     class="{{if eq .Active "meals"}}menu-active{{end}}">Meals</a></li>
-          <li><a href="/tools"     class="{{if eq .Active "tools"}}menu-active{{end}}">Tools</a></li>
+          <li><a href="/"          class="{{if eq .Active "chat"     }}menu-active{{end}}" {{if eq .Active "chat"     }}aria-current="page"{{end}}>Chat</a></li>
+          <li><a href="/dashboard" class="{{if eq .Active "dashboard"}}menu-active{{end}}" {{if eq .Active "dashboard"}}aria-current="page"{{end}}>Dashboard</a></li>
+          <li><a href="/meals"     class="{{if eq .Active "meals"    }}menu-active{{end}}" {{if eq .Active "meals"    }}aria-current="page"{{end}}>Meals</a></li>
+          <li><a href="/tools"     class="{{if eq .Active "tools"    }}menu-active{{end}}" {{if eq .Active "tools"    }}aria-current="page"{{end}}>Tools</a></li>
         </ul>
       </nav>
     </div>
