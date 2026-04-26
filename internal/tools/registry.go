@@ -1,10 +1,10 @@
 package tools
 
 import (
+	"cmp"
 	"fmt"
 	"maps"
 	"slices"
-	"strings"
 	"sync"
 )
 
@@ -34,7 +34,7 @@ func All() []Tool {
 	regMu.RLock()
 	defer regMu.RUnlock()
 	return slices.SortedFunc(maps.Values(reg), func(a, b Tool) int {
-		return strings.Compare(a.Name, b.Name)
+		return cmp.Compare(a.Name, b.Name)
 	})
 }
 
