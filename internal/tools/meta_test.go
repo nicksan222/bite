@@ -112,6 +112,21 @@ func TestMeta_everyCheckSurfacesInDoctor(t *testing.T) {
 	}
 }
 
+// TestMeta_everyToolHasAtLeastOneExample asserts every registered tool
+// contributes at least one row to `bite --help` (and `bite <tool> --help`).
+// Without this gate a tool registered without Examples is technically valid
+// but invisible in the rootCmd's example block — a discoverability hole
+// future contributors won't notice until they read the help themselves.
+func TestMeta_everyToolHasAtLeastOneExample(t *testing.T) {
+	for _, tool := range All() {
+		t.Run(tool.Name, func(t *testing.T) {
+			assert.NotEmpty(t, tool.Examples,
+				"tool %q has no Examples — add at least one so it shows in `bite --help`",
+				tool.Name)
+		})
+	}
+}
+
 // TestMeta_everyParamHasDesc walks every registered tool's Params and asserts
 // each one carries a non-empty Desc. The Desc shows up in the AI tool schema,
 // `bite <tool> --help`, and slash-command help — a missing one silently
