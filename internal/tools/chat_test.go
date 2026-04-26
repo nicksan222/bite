@@ -46,10 +46,14 @@ func TestChatTool_resumeFlagSurfaces(t *testing.T) {
 func TestRunChat_propagatesPrepareSessionError(t *testing.T) {
 	// resume=9999 against a fresh store can't be found; PrepareSession returns
 	// an error which runChat must propagate so the cobra layer can surface it.
+	// Wire a stub AI so RequireAI doesn't short-circuit before we reach
+	// PrepareSession — we want this test to assert the resume-failure branch.
 	deps := freshDeps(t)
+	deps.AI = stubAI{resp: ""}
 	tool := MustGet("chat")
 	_, err := tool.Run(context.Background(), deps, NewArgsForTool(tool, map[string]any{"resume": int64(9999)}))
 	require.Error(t, err)
+	assert.Contains(t, err.Error(), "9999", "error should reference the resume id we tried to load")
 }
 
 // TestRunChat_failsFastWhenAIUnusable proves the cobra path (lazyAI) errors

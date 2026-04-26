@@ -36,8 +36,8 @@ turns for anything that needs context, tool calls, or follow-ups.`,
 }
 
 func runAsk(ctx context.Context, deps Deps, args Args) (Result, error) {
-	if deps.AI == nil {
-		return Result{}, errors.New("AI client not configured")
+	if err := deps.RequireAI(); err != nil {
+		return Result{}, err
 	}
 	prompt := args.String("prompt")
 	images := args.StringList("image")

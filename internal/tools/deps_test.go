@@ -5,6 +5,7 @@ import (
 	"time"
 
 	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
 )
 
 func TestDeps_NowOrDefault_fallback(t *testing.T) {
@@ -22,9 +23,11 @@ func TestDeps_LocOrDefault_fallback(t *testing.T) {
 }
 
 func TestDeps_RequireAI_nilAI(t *testing.T) {
-	// Tools without AI needs construct Deps without setting AI; RequireAI
-	// must be a no-op so they don't have to bypass the gate.
-	assert.NoError(t, Deps{}.RequireAI())
+	// nil AI fails so AI-dependent tools (chat, ask, analyze_meal) all share
+	// one gate instead of duplicating the nil-check at every Run site.
+	err := Deps{}.RequireAI()
+	require.Error(t, err)
+	assert.Contains(t, err.Error(), "AI client not configured")
 }
 
 func TestDeps_RequireAI_streamerWithoutEnsureUsable(t *testing.T) {

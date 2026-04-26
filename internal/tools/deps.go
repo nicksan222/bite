@@ -1,6 +1,7 @@
 package tools
 
 import (
+	"errors"
 	"io"
 	"time"
 
@@ -53,16 +54,24 @@ func (d Deps) LocOrDefault() *time.Location {
 	return time.Local
 }
 
-// RequireAI lets a tool that strictly needs the model (e.g. chat) fail fast
-// before doing any user-facing work. If d.AI implements EnsureUsable it is
-// called; otherwise this is a no-op. Test stubs don't implement EnsureUsable
-// so unit tests pass through cleanly without env juggling.
+// RequireAI lets a tool that strictly needs the model (chat, ask,
+// analyze_meal, log_meal_from_media) fail fast before doing any
+// user-facing work. Returns:
+//
+//   - "AI client not configured" if d.AI is nil (tests that don't wire AI),
+//   - the EnsureUsable() error for a lazyAI with missing ANTHROPIC_API_KEY,
+//   - nil for a real or stub Streamer with no further check needed.
+//
+// Tools that don't need AI (meals_*, set_goals, doctor, …) simply don't
+// call this — Deps.AI being nil is fine for them.
 func (d Deps) RequireAI() error {
 	if d.AI == nil {
-		return nil
+		return errAINotConfigured
 	}
 	if e, ok := d.AI.(aiEnsurer); ok {
 		return e.EnsureUsable()
 	}
 	return nil
 }
+
+var errAINotConfigured = errors.New("AI client not configured")

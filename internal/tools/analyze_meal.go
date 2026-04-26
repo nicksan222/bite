@@ -46,8 +46,8 @@ func runAnalyzeMeal(ctx context.Context, deps Deps, args Args) (Result, error) {
 
 // analyzeFromArgs is shared by analyze_meal and log_meal_from_media.
 func analyzeFromArgs(ctx context.Context, deps Deps, args Args) (*ai.MealAnalysis, error) {
-	if deps.AI == nil {
-		return nil, errors.New("AI client not configured")
+	if err := deps.RequireAI(); err != nil {
+		return nil, err
 	}
 	text := args.String("text")
 	files := args.StringList("file")
