@@ -81,6 +81,7 @@ jobs:
       - uses: golangci/golangci-lint-action@v6
         with:
           version: v1.64
+          install-mode: goinstall
 
   goreleaser-check:
     name: GoReleaser config check
