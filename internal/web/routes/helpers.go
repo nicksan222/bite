@@ -2,6 +2,8 @@ package routes
 
 import (
 	"bytes"
+	"crypto/rand"
+	"encoding/hex"
 	"errors"
 	"net/http"
 
@@ -76,6 +78,15 @@ func formArgs(c fiber.Ctx) map[string]string {
 		out[string(k)] = string(v)
 	}
 	return out
+}
+
+// newRandomID returns a 32-char hex token. Used for both chat session
+// cookies and per-turn SSE handoff IDs — the only requirement is global
+// uniqueness within the process, not cryptographic strength.
+func newRandomID() string {
+	b := make([]byte, 16)
+	_, _ = rand.Read(b)
+	return hex.EncodeToString(b)
 }
 
 // pageData is the layout's expected shape. Title fills the <title> tag

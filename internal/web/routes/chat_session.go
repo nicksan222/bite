@@ -1,8 +1,6 @@
 package routes
 
 import (
-	"crypto/rand"
-	"encoding/hex"
 	"sync"
 	"time"
 
@@ -88,13 +86,4 @@ func (s *sessionStore) pruneLocked() {
 			delete(s.sessions, id)
 		}
 	}
-}
-
-// newRandomID returns a 32-char hex token. Used for both the session
-// cookie and per-turn handoff IDs — the only requirement is global
-// uniqueness within the process, not cryptographic strength.
-func newRandomID() string {
-	b := make([]byte, 16)
-	_, _ = rand.Read(b)
-	return hex.EncodeToString(b)
 }
