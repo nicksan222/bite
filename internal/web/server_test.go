@@ -120,6 +120,11 @@ func TestServer_ListenShutsDownOnCancel(t *testing.T) {
 	}
 }
 
+// freePort grabs a free TCP port on loopback and immediately closes
+// it, returning the port number. Inherently racy — between the close
+// and a subsequent bind, another process could grab the same port —
+// but acceptable for short-lived test setup where the bind happens
+// next.
 func freePort(t *testing.T) int {
 	t.Helper()
 	l, err := net.Listen("tcp", "127.0.0.1:0")
@@ -129,6 +134,10 @@ func freePort(t *testing.T) int {
 	return port
 }
 
+// waitForListen polls the loopback port until a TCP dial succeeds or
+// 2s elapse. Used to avoid the test cancelling ctx before Listen has
+// reached app.Listen — otherwise the cancel arrives in the
+// "before-bind" window and the test races itself.
 func waitForListen(t *testing.T, port int) {
 	t.Helper()
 	addr := net.JoinHostPort("127.0.0.1", strconv.Itoa(port))
