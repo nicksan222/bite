@@ -76,6 +76,25 @@ func TestDoctor_runsAllUnskippedChecks(t *testing.T) {
 	}
 }
 
+func TestDoctor_allHardChecksPassWithStubEnv(t *testing.T) {
+	// Force every non-ping hard check down its success path: valid config,
+	// valid SQLite path, and an API key are enough.
+	dir := t.TempDir()
+	t.Setenv("BITE_DB", dir+"/test.db")
+	t.Setenv("BITE_MODEL", "claude-haiku-4-5")
+	t.Setenv("BITE_MAX_TOKENS", "")
+	t.Setenv("ANTHROPIC_API_KEY", "sk-test-fake")
+	t.Setenv("OPENAI_API_KEY", "sk-openai-fake")
+	t.Setenv("XDG_DATA_HOME", t.TempDir())
+
+	res, err := MustGet("doctor").Run(context.Background(), Deps{}, NewArgs(map[string]any{
+		"ping": false,
+	}))
+	require.NoError(t, err, "doctor output:\n%s", res.Text)
+	assert.Contains(t, res.Text, "All required checks passed")
+	assert.Contains(t, res.Text, "audio transcription available")
+}
+
 func TestDoctor_pingGateRunsCheck(t *testing.T) {
 	// Find the ping-gated check.
 	var gated []string
