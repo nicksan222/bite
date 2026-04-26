@@ -97,9 +97,9 @@ tools.Register(tools.Tool{
 
 Adapters consume the registry:
 
-- `tools.AITools(deps)` → `[]ai.Tool` for `ai.WithTools` (called by `cli/chat.go`)
+- `tools.AITools(deps)` → `[]ai.Tool` for `ai.WithTools` (called by `tools.RunChatTUI`)
 - `tools.RegisterCobra(rootCmd, provider)` → cobra subcommands (called by `cli/root.go`)
-- `tools.NewSlashHandler(deps)` → TUI slash dispatcher (passed to `tui.WithSlashHandler` from `cli/chat.go`)
+- `tools.NewSlashHandler(deps)` → TUI slash dispatcher (called by `tools.RunChatTUI`)
 - `tools.BuildSystemPrompt(custom)` → assembles persona + appendix (called by `tools.OpenAIClient`)
 - `tools.Checks()` → doctor's check list (`bite doctor` and `bite doctor --help` enumerate the registry)
 
@@ -128,7 +128,7 @@ simpler — call `Run(ctx)` directly.
 
 ### Boundaries
 - The TUI never imports `internal/db` or sqlc directly — it talks to a small
-  `tui.Persister` interface, satisfied by `*db.Store` adapters in `internal/cli`.
+  `tui.Persister` interface, satisfied by `tools.ChatPersister`.
 - Callers depend on `*db.Store`, not on `internal/db/sqlc`. The store
   re-exports `db.Conversation` and `db.Message` so importers stay clean.
 - The AI layer never imports `internal/config` — `tools.OpenAIClient`
