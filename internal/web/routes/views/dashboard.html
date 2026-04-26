@@ -13,7 +13,7 @@
           <p class="text-base-content/70">{{.Desc}}</p>
         </div>
         <div hx-get="/htmx/tool/{{.Tool}}"
-             hx-trigger="load, every 30s"
+             hx-trigger="load, every 30s, refresh from:body"
              hx-swap="innerHTML">
           <span class="loading loading-dots loading-sm text-base-content/60"></span>
         </div>
