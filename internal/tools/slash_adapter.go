@@ -161,7 +161,7 @@ func tokeniseSlash(s string) ([]string, error) {
 	var tokens []string
 	var cur strings.Builder
 	inQuote := false
-	for i := 0; i < len(s); i++ {
+	for i := range len(s) {
 		c := s[i]
 		switch {
 		case c == '"':
