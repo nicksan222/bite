@@ -4,6 +4,9 @@ import (
 	"context"
 	"errors"
 	"maps"
+	"os"
+	"path/filepath"
+	"runtime"
 	"strings"
 	"testing"
 
@@ -101,6 +104,28 @@ func TestDoctor_allHardChecksPassWithStubEnv(t *testing.T) {
 	require.NoError(t, err, "doctor output:\n%s", res.Text)
 	assert.Contains(t, res.Text, "All required checks passed")
 	assert.Contains(t, res.Text, "audio transcription available")
+}
+
+func TestDoctor_ffmpegSuccessPath(t *testing.T) {
+	// Drop a fake `ffmpeg` binary into a temp dir and prepend it to PATH so
+	// the soft "media: ffmpeg" check goes down its success branch.
+	if runtime.GOOS == "windows" {
+		t.Skip("fake-binary trick unreliable on Windows")
+	}
+	dir := t.TempDir()
+	require.NoError(t, os.WriteFile(filepath.Join(dir, "ffmpeg"), []byte("#!/bin/sh\nexit 0\n"), 0o755))
+	t.Setenv("PATH", dir+":"+os.Getenv("PATH"))
+
+	t.Setenv("BITE_DB", t.TempDir()+"/test.db")
+	t.Setenv("BITE_MODEL", "claude-haiku-4-5")
+	t.Setenv("BITE_MAX_TOKENS", "")
+	t.Setenv("ANTHROPIC_API_KEY", "sk-test-fake")
+	t.Setenv("OPENAI_API_KEY", "")
+	t.Setenv("XDG_DATA_HOME", t.TempDir())
+
+	res, err := MustGet("doctor").Run(context.Background(), Deps{}, NewArgs(nil))
+	require.NoError(t, err)
+	assert.Contains(t, res.Text, "video keyframe extraction available")
 }
 
 func TestDoctor_dbCheckFailsWithBadDSN(t *testing.T) {
