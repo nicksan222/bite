@@ -245,6 +245,23 @@ func TestRegisterCobra_cleanupRuns(t *testing.T) {
 	})
 }
 
+func TestPositionalArgsValidator_branches(t *testing.T) {
+	// All required → ExactArgs.
+	require.NoError(t, positionalArgsValidator(2, 2)(nil, []string{"a", "b"}))
+	require.Error(t, positionalArgsValidator(2, 2)(nil, []string{"a"}))
+
+	// All optional → MaximumNArgs.
+	require.NoError(t, positionalArgsValidator(0, 2)(nil, []string{}))
+	require.NoError(t, positionalArgsValidator(0, 2)(nil, []string{"a", "b"}))
+	require.Error(t, positionalArgsValidator(0, 2)(nil, []string{"a", "b", "c"}))
+
+	// Mixed required+optional → RangeArgs.
+	require.NoError(t, positionalArgsValidator(1, 2)(nil, []string{"a"}))
+	require.NoError(t, positionalArgsValidator(1, 2)(nil, []string{"a", "b"}))
+	require.Error(t, positionalArgsValidator(1, 2)(nil, []string{}))
+	require.Error(t, positionalArgsValidator(1, 2)(nil, []string{"a", "b", "c"}))
+}
+
 func TestParseString_allTypes(t *testing.T) {
 	v, err := parseString(ParamString, "hi")
 	require.NoError(t, err)
