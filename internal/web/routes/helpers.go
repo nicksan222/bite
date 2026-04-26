@@ -14,20 +14,15 @@ func jsonError(c fiber.Ctx, status int, msg string) error {
 	return c.Status(status).JSON(fiber.Map{"error": msg})
 }
 
-// render executes the named content template inside layout.html and
-// writes the result. We render to a buffer first so a template error
-// surfaces as a 500 rather than a half-written response with a 200.
-//
-// Each page defines its own "content" block. Cloning the parsed layout
-// per call keeps the blocks isolated — without the clone, the second
-// page parsed would shadow the first's "content" definition globally.
+// render executes the layout pre-bound with the named page's "content"
+// block and writes the result. Templates are parsed once at init (see
+// embed.go) so a missing page name here is a programmer mistake, not a
+// runtime template error. Rendering goes through a buffer first so an
+// execution error surfaces as a 500 rather than a half-written 200.
 func render(c fiber.Ctx, contentTmpl string, data any) error {
-	view, err := baseTemplates.Clone()
-	if err != nil {
-		return fiber.NewError(http.StatusInternalServerError, "clone templates: "+err.Error())
-	}
-	if _, err := view.ParseFS(assetsFS, "views/"+contentTmpl); err != nil {
-		return fiber.NewError(http.StatusInternalServerError, "parse "+contentTmpl+": "+err.Error())
+	view, ok := pageTemplates[contentTmpl]
+	if !ok {
+		return fiber.NewError(http.StatusInternalServerError, "unknown page template: "+contentTmpl)
 	}
 	var buf bytes.Buffer
 	if err := view.ExecuteTemplate(&buf, "layout", data); err != nil {
