@@ -13,6 +13,18 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
+// TestNew_errorHandlerEnvelope locks in the JSON-error contract for any
+// failure that flows through the ErrorHandler closure: a fiber.Error
+// (here, the framework-default 404) maps to its Code, not 500, and the
+// body is the {"error": …} shape the API layer uses everywhere.
+func TestNew_errorHandlerEnvelope(t *testing.T) {
+	srv := New(Deps{})
+	resp, err := srv.App().Test(httptest.NewRequest(http.MethodGet, "/no-such-route", nil))
+	require.NoError(t, err)
+	require.Equal(t, http.StatusNotFound, resp.StatusCode)
+	require.Contains(t, resp.Header.Get("Content-Type"), "application/json")
+}
+
 // TestNew_endToEnd is the integration test for web.New: a full request
 // flows through the configured fiber.App (middleware + routes) and the
 // expected status comes back. Per-handler behavior is tested in routes/;
