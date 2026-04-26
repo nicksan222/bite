@@ -64,6 +64,8 @@ func TestAPI_invokeTool_success(t *testing.T) {
 	resp, err := app.Test(postJSON("/api/tools/echo", `{"msg":"hi"}`))
 	require.NoError(t, err)
 	require.Equal(t, http.StatusOK, resp.StatusCode)
+	require.Contains(t, resp.Header.Get("Content-Type"), "application/json",
+		"successful invocations must come back as JSON, not coerce to HTML or text/plain")
 
 	var got Result
 	require.NoError(t, json.NewDecoder(resp.Body).Decode(&got))
