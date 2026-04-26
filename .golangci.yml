@@ -1,0 +1,37 @@
+run:
+  timeout: 5m
+  tests: true
+
+linters:
+  disable-all: true
+  enable:
+    - errcheck
+    - gosimple
+    - govet
+    - ineffassign
+    - staticcheck
+    - unused
+    - gofmt
+    - goimports
+    - misspell
+    - revive
+    - unconvert
+    - unparam
+
+linters-settings:
+  goimports:
+    local-prefixes: github.com/nicksan222/bite
+  revive:
+    rules:
+      - name: var-naming
+      - name: exported
+        disabled: true
+
+issues:
+  exclude-dirs:
+    - internal/db/sqlc
+  exclude-rules:
+    - path: _test\.go
+      linters:
+        - errcheck
+        - unparam

@@ -1,0 +1,122 @@
+package config
+
+import (
+	"os"
+	"path/filepath"
+	"testing"
+
+	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
+)
+
+func TestLoadDefaults(t *testing.T) {
+	t.Setenv("BITE_DB", "")
+	t.Setenv("ANTHROPIC_API_KEY", "")
+	t.Setenv("BITE_MODEL", "")
+	t.Setenv("BITE_MAX_TOKENS", "")
+	t.Setenv("BITE_SYSTEM_PROMPT", "")
+	t.Setenv("XDG_DATA_HOME", t.TempDir())
+
+	c, err := Load()
+	require.NoError(t, err)
+
+	assert.Equal(t, "claude-sonnet-4-6", c.Model)
+	assert.Equal(t, 4096, c.MaxTokens)
+	assert.Equal(t, "bite.db", filepath.Base(c.DSN))
+}
+
+func TestRequireAPIKey(t *testing.T) {
+	c := Config{}
+	require.Error(t, c.RequireAPIKey(), "RequireAPIKey should fail with empty key")
+	c.APIKey = "sk-test"
+	require.NoError(t, c.RequireAPIKey(), "RequireAPIKey should succeed")
+}
+
+func TestEnvOverrides(t *testing.T) {
+	dir := t.TempDir()
+	dsn := filepath.Join(dir, "custom.db")
+	t.Setenv("BITE_DB", dsn)
+	t.Setenv("BITE_MODEL", "claude-haiku-4-5")
+	t.Setenv("BITE_MAX_TOKENS", "1024")
+	t.Setenv("BITE_SYSTEM_PROMPT", "be terse")
+	t.Setenv("ANTHROPIC_API_KEY", "sk-test")
+
+	c, err := Load()
+	require.NoError(t, err)
+	assert.Equal(t, dsn, c.DSN)
+	assert.Equal(t, "claude-haiku-4-5", c.Model)
+	assert.Equal(t, 1024, c.MaxTokens)
+	assert.Equal(t, "be terse", c.SystemPrompt)
+	assert.Equal(t, "sk-test", c.APIKey)
+}
+
+func TestInvalidMaxTokens(t *testing.T) {
+	t.Setenv("BITE_MAX_TOKENS", "0")
+	t.Setenv("ANTHROPIC_API_KEY", "")
+	t.Setenv("XDG_DATA_HOME", t.TempDir())
+	_, err := Load()
+	require.Error(t, err)
+}
+
+func TestLoad_customDSNCreatesDir(t *testing.T) {
+	dir := t.TempDir()
+	dsn := filepath.Join(dir, "subdir", "custom.db")
+	t.Setenv("BITE_DB", dsn)
+	t.Setenv("BITE_MAX_TOKENS", "")
+
+	c, err := Load()
+	require.NoError(t, err)
+	assert.Equal(t, dsn, c.DSN)
+}
+
+func TestLoad_invalidMaxTokensEnvVar(t *testing.T) {
+	t.Setenv("BITE_MAX_TOKENS", "not-a-number")
+	t.Setenv("XDG_DATA_HOME", t.TempDir())
+	_, err := Load()
+	require.Error(t, err)
+}
+
+func TestLoad_uncreatableDataDir(t *testing.T) {
+	// /dev/null is a char device — MkdirAll of /dev/null/sub will fail.
+	t.Setenv("BITE_DB", "/dev/null/sub/bite.db")
+	t.Setenv("BITE_MAX_TOKENS", "")
+	_, err := Load()
+	require.Error(t, err)
+}
+
+func TestLoad_defaultSystemPromptApplied(t *testing.T) {
+	t.Setenv("BITE_DB", t.TempDir()+"/bite.db")
+	t.Setenv("BITE_MAX_TOKENS", "")
+	t.Setenv("BITE_SYSTEM_PROMPT", "")
+
+	c, err := Load()
+	require.NoError(t, err)
+	assert.NotEmpty(t, c.SystemPrompt, "expected default system prompt when BITE_SYSTEM_PROMPT is unset")
+	assert.Greater(t, len(c.SystemPrompt), 20, "default system prompt looks too short: %q", c.SystemPrompt)
+}
+
+func TestLoad_explicitSystemPromptPreserved(t *testing.T) {
+	t.Setenv("BITE_DB", t.TempDir()+"/bite.db")
+	t.Setenv("BITE_MAX_TOKENS", "")
+	t.Setenv("BITE_SYSTEM_PROMPT", "custom prompt")
+
+	c, err := Load()
+	require.NoError(t, err)
+	assert.Equal(t, "custom prompt", c.SystemPrompt)
+}
+
+func TestLoad_xdgDataFileError(t *testing.T) {
+	t.Setenv("BITE_DB", "")
+	t.Setenv("BITE_MAX_TOKENS", "")
+	// Point XDG_DATA_HOME at a file (not a dir) so xdg.DataFile can't create subdirectories.
+	f, err := os.CreateTemp("", "xdg-file-*")
+	require.NoError(t, err)
+	f.Close()
+	defer os.Remove(f.Name())
+	t.Setenv("XDG_DATA_HOME", f.Name())
+
+	_, err = Load()
+	if err == nil {
+		t.Skip("xdg.DataFile did not fail with file as XDG_DATA_HOME — skip on this platform")
+	}
+}

@@ -1,0 +1,16 @@
+.git
+.github
+.devcontainer
+.vscode
+.idea
+bin
+dist
+*.db
+*.db-journal
+*.sqlite
+*.sqlite3
+coverage.*
+*.test
+*.out
+.env
+.env.local

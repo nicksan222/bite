@@ -1,0 +1,43 @@
+# Binaries
+/bin/
+/dist/
+*.exe
+*.exe~
+*.dll
+*.so
+*.dylib
+bite
+
+# Test / coverage artifacts
+*.test
+*.out
+coverage.*
+
+# Go workspace
+go.work
+go.work.sum
+
+# Local env (.env.example is checked in)
+.env
+.env.local
+!.env.example
+
+# SQLite databases
+*.db
+*.db-journal
+*.sqlite
+*.sqlite3
+
+# Editor
+.vscode/
+.idea/
+*.swp
+.DS_Store
+
+# Node (skills.sh runs via npx)
+node_modules/
+
+# Local agent harness state — keep the .claude/skills symlink that points
+# to .agents/skills so Claude Code finds the same skill set as everyone else.
+.claude/*
+!.claude/skills
