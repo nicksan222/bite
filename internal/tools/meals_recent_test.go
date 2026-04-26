@@ -20,6 +20,14 @@ func TestMealsRecent_empty(t *testing.T) {
 	assert.Contains(t, res.Text, "no meals")
 }
 
+func TestMealsRecent_storeError(t *testing.T) {
+	ctx := context.Background()
+	deps := freshDeps(t)
+	require.NoError(t, deps.Store.Close())
+	_, err := MustGet("meals_recent").Run(ctx, deps, NewArgs(nil))
+	require.Error(t, err)
+}
+
 func TestMealsRecent_returnsTable(t *testing.T) {
 	ctx := context.Background()
 	deps := freshDeps(t)
