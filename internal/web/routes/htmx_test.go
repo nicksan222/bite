@@ -120,6 +120,11 @@ func TestHTMX_tool_notFound(t *testing.T) {
 	resp, err := app.Test(httptest.NewRequest(http.MethodGet, "/htmx/tool/nope", nil))
 	require.NoError(t, err)
 	require.Equal(t, http.StatusNotFound, resp.StatusCode)
+	require.Contains(t, resp.Header.Get("Content-Type"), "text/html")
+	body, _ := io.ReadAll(resp.Body)
+	require.Contains(t, string(body), `alert alert-error`)
+	require.Contains(t, string(body), "tool not found: nope",
+		"404 alert must echo the requested tool name so the user knows what failed")
 }
 
 // TestHTMX_postForm locks in that POSTed form data flows through
