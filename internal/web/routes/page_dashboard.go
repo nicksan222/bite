@@ -2,8 +2,8 @@ package routes
 
 import "github.com/gofiber/fiber/v3"
 
-// dashboardCard is one tile on the home page. Static config — the live
-// data is fetched by HTMX on load.
+// dashboardCard is one tile on the /dashboard page. Static config — the
+// live body of each tile is fetched by HTMX on load via /htmx/tool/<Tool>.
 type dashboardCard struct {
 	Tool  string
 	Title string
