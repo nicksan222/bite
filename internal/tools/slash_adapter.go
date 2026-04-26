@@ -7,13 +7,11 @@ import (
 	"unicode"
 )
 
-// SlashOutcome is the result of dispatching one slash command. UserLine is
-// the raw line the user typed (for transcript echo). Result is what the tool
-// returned. ParseError is set when the line could not be parsed (unknown
-// command, missing required positional, type mismatch). RunError is set when
-// the tool itself returned an error.
+// SlashOutcome is the result of dispatching one slash command. ParseError is
+// set when the line could not be parsed (unknown command, missing required
+// positional, type mismatch). RunError is set when the tool itself returned
+// an error. Both are nil on success.
 type SlashOutcome struct {
-	UserLine   string
 	Result     Result
 	ParseError error
 	RunError   error
@@ -46,29 +44,29 @@ func NewSlashHandler(deps Deps) SlashHandler {
 func Dispatch(ctx context.Context, deps Deps, line string) SlashOutcome {
 	line = strings.TrimSpace(line)
 	if !strings.HasPrefix(line, "/") {
-		return SlashOutcome{UserLine: line, ParseError: fmt.Errorf("not a slash command")}
+		return SlashOutcome{ParseError: fmt.Errorf("not a slash command")}
 	}
 	name, rest, _ := strings.Cut(line[1:], " ")
 	name = strings.TrimSpace(name)
 
 	if name == "help" {
-		return SlashOutcome{UserLine: line, Result: Result{Text: helpText()}}
+		return SlashOutcome{Result: Result{Text: helpText()}}
 	}
 
 	tool, ok := Get(name)
 	if !ok {
-		return SlashOutcome{UserLine: line, ParseError: fmt.Errorf("unknown command: /%s — type /help for the list", name)}
+		return SlashOutcome{ParseError: fmt.Errorf("unknown command: /%s — type /help for the list", name)}
 	}
 
 	args, err := parseSlashArgs(tool, rest)
 	if err != nil {
-		return SlashOutcome{UserLine: line, ParseError: err}
+		return SlashOutcome{ParseError: err}
 	}
 	res, err := tool.Run(ctx, deps, args)
 	if err != nil {
-		return SlashOutcome{UserLine: line, RunError: err}
+		return SlashOutcome{RunError: err}
 	}
-	return SlashOutcome{UserLine: line, Result: res}
+	return SlashOutcome{Result: res}
 }
 
 // parseSlashArgs tokenises rest as a mix of positionals and key=value pairs,
