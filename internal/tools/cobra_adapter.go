@@ -37,7 +37,12 @@ func toCobraCommand(t Tool, provide DepsProvider) *cobra.Command {
 		Use:   use,
 		Short: t.Summary,
 		Long:  t.Long(),
-		Args:  cobra.RangeArgs(requiredPos, totalPos),
+		// Pick the cobra Args validator that produces the clearest error
+		// message for each positional shape:
+		//   - ExactArgs when every positional is required (most common),
+		//   - MaximumNArgs when all are optional,
+		//   - RangeArgs only for the genuinely-mixed case.
+		Args: positionalArgsValidator(requiredPos, totalPos),
 	}
 
 	flagSetters := bindFlags(cmd, t.Params)
@@ -71,6 +76,19 @@ func toCobraCommand(t Tool, provide DepsProvider) *cobra.Command {
 		return nil
 	}
 	return cmd
+}
+
+// positionalArgsValidator picks the friendliest cobra positional-arg
+// validator for the given (required, total) shape.
+func positionalArgsValidator(required, total int) cobra.PositionalArgs {
+	switch required {
+	case total:
+		return cobra.ExactArgs(required)
+	case 0:
+		return cobra.MaximumNArgs(total)
+	default:
+		return cobra.RangeArgs(required, total)
+	}
 }
 
 // buildUse renders the `Use` string for the cobra command, including
