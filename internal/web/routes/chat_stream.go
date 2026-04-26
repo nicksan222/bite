@@ -56,6 +56,16 @@ func chatStart(d Deps) fiber.Handler {
 	}
 }
 
+// SSE event names shared by the server (writeSSE calls below) and the
+// client (sse-swap / sse-close attributes in chatTurnTmpl). Centralising
+// the strings here means a rename is a one-line refactor instead of a
+// hunt across the package.
+const (
+	sseEventDelta = "delta"
+	sseEventDone  = "done"
+	sseEventError = "error"
+)
+
 // chatStream handles GET /api/chat/stream/:id — the SSE endpoint
 // htmx-ext-sse opens after a successful POST /api/chat. The response is
 // ALWAYS an SSE 200 stream so a failure surfaces as an `event: error`
@@ -119,8 +129,8 @@ func runChatStream(ctx context.Context, d Deps, turnID string, w *bufio.Writer) 
 // done event, so the asst bubble's sse-close="done" hook still fires
 // and the EventSource shuts cleanly.
 func writeSSEErrorAndDone(w *bufio.Writer, msg string) {
-	writeSSE(w, "error", msg)
-	writeSSE(w, "done", "")
+	writeSSE(w, sseEventError, msg)
+	writeSSE(w, sseEventDone, "")
 }
 
 // setSSEHeaders configures the response for a Server-Sent Events stream
@@ -148,14 +158,14 @@ func pumpStreamEvents(w *bufio.Writer, events <-chan ai.StreamEvent) string {
 	for ev := range events {
 		switch {
 		case ev.Err != nil:
-			writeSSE(w, "error", ev.Err.Error())
+			writeSSE(w, sseEventError, ev.Err.Error())
 			return ""
 		case ev.Done:
-			writeSSE(w, "done", "")
+			writeSSE(w, sseEventDone, "")
 			return cmp.Or(ev.Final, assembled.String())
 		case ev.Delta != "":
 			assembled.WriteString(ev.Delta)
-			writeSSE(w, "delta", ev.Delta)
+			writeSSE(w, sseEventDelta, ev.Delta)
 			if err := w.Flush(); err != nil {
 				return ""
 			}
