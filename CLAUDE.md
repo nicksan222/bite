@@ -99,9 +99,14 @@ Adapters consume the registry:
 
 - `tools.AITools(deps)` → `[]ai.Tool` for `ai.WithTools` (called by `cli/chat.go`)
 - `tools.RegisterCobra(rootCmd, provider)` → cobra subcommands (called by `cli/root.go`)
-- `tools.Dispatch(ctx, deps, "/log_meal …")` → slash dispatch (called by TUI via `tui.WithSlashHandler`)
-- `tools.RenderAppendix()` → system-prompt addendum (appended in `cli/root.go::openAIClient`)
+- `tools.NewSlashHandler(deps)` → TUI slash dispatcher (passed to `tui.WithSlashHandler` from `cli/chat.go`)
+- `tools.BuildSystemPrompt(custom)` → assembles persona + appendix (called by `tools.OpenAIClient`)
 - `tools.Checks()` → doctor's check list (`bite doctor` and `bite doctor --help` enumerate the registry)
+
+Wiring helpers also live next to the registry — `LoadConfig`,
+`OpenStore`, `OpenAIClient`, `CobraDepsProvider`, `PrepareSession`,
+`NewChatPersister`. Adding a new entry point should reuse them rather
+than rebuilding the wiring in `cli/`.
 
 Per-tool tests call `Run` directly with an in-memory `Deps`. No cobra,
 no `tea.Model`, no AI mock plumbing required. Per-check tests are even
@@ -126,7 +131,7 @@ simpler — call `Run(ctx)` directly.
   `tui.Persister` interface, satisfied by `*db.Store` adapters in `internal/cli`.
 - Callers depend on `*db.Store`, not on `internal/db/sqlc`. The store
   re-exports `db.Conversation` and `db.Message` so importers stay clean.
-- The AI layer never imports `internal/config` — `internal/cli/root.go`
+- The AI layer never imports `internal/config` — `tools.OpenAIClient`
   builds an `ai.ClientConfig` from a loaded `config.Config` and passes it in.
 
 ### Errors
