@@ -308,6 +308,13 @@ func TestValidate_defaultTypeMismatch_fails(t *testing.T) {
 	assert.Error(t, tt.validate())
 }
 
+func TestValidate_requiredWithDefault_fails(t *testing.T) {
+	// Required + Default is contradictory — the default is unreachable.
+	tt := noopTool("contradict")
+	tt.Params = []Param{{Name: "x", Type: ParamString, Required: true, Default: "fallback"}}
+	assert.Error(t, tt.validate())
+}
+
 func TestValidate_defaultTypeMatch_passes(t *testing.T) {
 	tt := noopTool("good_default")
 	tt.Params = []Param{

@@ -117,6 +117,9 @@ func (t Tool) validate() error {
 			return fmt.Errorf("tool %q: duplicate param %q", t.Name, p.Name)
 		}
 		seen[p.Name] = struct{}{}
+		if p.Required && p.Default != nil {
+			return fmt.Errorf("tool %q: param %q is Required AND has a Default — pick one (a default makes the param optional)", t.Name, p.Name)
+		}
 		if err := validateDefault(t.Name, p); err != nil {
 			return err
 		}
