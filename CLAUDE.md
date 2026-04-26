@@ -101,6 +101,7 @@ Adapters consume the registry:
 
 - `tools.AITools(deps)` → `[]ai.Tool` for `ai.WithTools` (called by the chat tool's `Run`)
 - `tools.RegisterCobra(rootCmd, provider)` → cobra subcommands (called by `cli/root.go`)
+- `tools.SetDefault(rootCmd, "chat")` → wires the chat tool as `bite`'s no-arg RunE
 - `tools.NewSlashHandler(deps)` → TUI slash dispatcher (called by the chat tool's `Run`)
 - `tools.BuildSystemPrompt(custom)` → assembles persona + appendix (called by `tools.OpenAIClient`)
 - `tools.Checks()` → doctor's check list (`bite doctor` and `bite doctor --help` enumerate the registry)
@@ -129,8 +130,17 @@ simpler — call `Run(ctx)` directly.
   `args.Int("limit")` and trust the declared default — no per-tool
   `if v == 0 { v = N }` boilerplate. Param.Default is mutually exclusive
   with `Required` (a default makes the param optional).
+- `SkipAI` / `SkipSlash` — opt out of the AI-tool-spec / slash dispatcher.
+  Set both for cobra-only commands like `chat` (the launcher itself can't
+  meaningfully be called by the model or recursively from inside a TUI).
+  The cobra adapter still mounts the subcommand. Use `tools.SetDefault` to
+  wire a tool as the rootCmd's no-arg behavior.
 - `Deps.StreamWriter` — write progressive output here for tools that stream
   (e.g. `ask`). The cobra adapter wires it to stdout; AI/slash leave it nil.
+- `Deps.RequireAI()` — call this at the top of any `Run` that absolutely
+  needs the model (chat does). Surfaces missing-API-key errors before
+  blocking on user input, so `bite chat` with no key fails fast instead of
+  opening the TUI and breaking on the first message.
 
 ---
 
