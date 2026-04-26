@@ -1,0 +1,27 @@
+{{define "content"}}
+<section class="card">
+  <header class="card__header">
+    <h2 class="card__title">Chat with bite</h2>
+    <p class="card__desc">Streamed via /api/chat. The model can call any registered tool while answering.</p>
+  </header>
+  <div class="card__body">
+    <div class="chat">
+      <div id="chat-transcript" class="chat__transcript" aria-live="polite">
+        <div id="chat-empty" class="chat__empty">
+          Send a message to start. Try <code>"log 200g of pasta with pesto"</code>.
+        </div>
+      </div>
+      <div id="chat-error" class="bite-error" hidden></div>
+      <form id="chat-form" class="chat__composer" autocomplete="off">
+        <textarea id="chat-input" class="textarea" name="message"
+                  placeholder="Ask anything… (⌘/Ctrl+Enter to send)"></textarea>
+        <div class="chat__composer-actions">
+          <button id="chat-send" type="submit" class="btn">Send</button>
+          <button id="chat-stop" type="button" class="btn btn--outline" hidden>Stop</button>
+        </div>
+      </form>
+    </div>
+  </div>
+</section>
+<script src="/static/chat.js" defer></script>
+{{end}}

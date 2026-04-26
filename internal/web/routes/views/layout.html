@@ -1,0 +1,29 @@
+{{define "layout"}}<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>bite — {{.Title}}</title>
+  <link rel="stylesheet" href="/static/styles.css">
+  <!-- htmx is vendored under static/ — bite web has no runtime CDN dep. -->
+  <script src="/static/htmx.min.js" defer></script>
+</head>
+<body>
+<div class="shell">
+  <header class="header">
+    <div class="header__inner">
+      <h1 class="brand">bite<span class="brand__sub"> · dashboard</span></h1>
+      <nav class="nav">
+        <a href="/"       class="nav__item {{if eq .Active "dashboard"}}nav__item--active{{end}}">Dashboard</a>
+        <a href="/chat"   class="nav__item {{if eq .Active "chat"}}nav__item--active{{end}}">Chat</a>
+        <a href="/meals"  class="nav__item {{if eq .Active "meals"}}nav__item--active{{end}}">Meals</a>
+        <a href="/tools"  class="nav__item {{if eq .Active "tools"}}nav__item--active{{end}}">Tools</a>
+      </nav>
+    </div>
+  </header>
+  <main class="main">
+    {{template "content" .}}
+  </main>
+</div>
+</body>
+</html>{{end}}

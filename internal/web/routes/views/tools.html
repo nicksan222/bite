@@ -1,0 +1,34 @@
+{{define "content"}}
+<div class="stack">
+  <section class="card">
+    <header class="card__header">
+      <h2 class="card__title">Registry</h2>
+      <p class="card__desc">
+        Every tool the CLI knows is exposed here over HTTP. POST <code>/api/tools/&lt;name&gt;</code>
+        with a JSON body of params, or hit <code>/htmx/tool/&lt;name&gt;</code> for an HTML fragment.
+      </p>
+    </header>
+  </section>
+  <div class="grid grid--2">
+    {{range .Tools}}
+    <section class="card">
+      <header class="card__header">
+        <h3 class="card__title tool-card__name">{{.Name}}</h3>
+        <p class="card__desc">{{.Summary}}</p>
+      </header>
+      {{if .Params}}
+      <div class="card__body">
+        <ul class="tool-params">
+          {{range .Params}}
+          <li>
+            <span class="tool-params__name">{{.Name}}</span><span class="tool-params__type">: {{.Type}}</span>{{if .Required}}<span class="tool-params__required"> (required)</span>{{end}}
+          </li>
+          {{end}}
+        </ul>
+      </div>
+      {{end}}
+    </section>
+    {{end}}
+  </div>
+</div>
+{{end}}
