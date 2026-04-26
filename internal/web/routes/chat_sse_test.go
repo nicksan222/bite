@@ -62,9 +62,10 @@ func TestPumpStreamEvents_clientDisconnectStopsLoop(t *testing.T) {
 }
 
 // TestPumpStreamEvents_terminalErrorYieldsErrorEvent validates the
-// mid-stream failure path: an ev.Err drains as `event: error` and the
-// pump returns "" (so the session does NOT get a partial assistant
-// message appended).
+// mid-stream failure path: an ev.Err drains as `event: error` followed
+// by `event: done` (matching the contract writeSSEErrorAndDone uses
+// for pre-stream failures), and the pump returns "" so the session
+// does NOT get a partial assistant message appended.
 func TestPumpStreamEvents_terminalErrorYieldsErrorEvent(t *testing.T) {
 	ch := make(chan ai.StreamEvent, 2)
 	ch <- ai.StreamEvent{Delta: "part"}
@@ -78,6 +79,8 @@ func TestPumpStreamEvents_terminalErrorYieldsErrorEvent(t *testing.T) {
 	out := buf.String()
 	require.Contains(t, out, "event: error")
 	require.Contains(t, out, "data: boom")
+	require.Contains(t, out, "event: done",
+		"mid-stream errors must terminate with a done event so sse-close fires cleanly")
 }
 
 // failingWriter errors on the Nth write. Drives pumpStreamEvents into
