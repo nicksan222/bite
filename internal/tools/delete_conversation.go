@@ -12,6 +12,9 @@ func init() {
 		Description: `Remove a saved conversation and every message it contains. Irreversible.`,
 		Prompt: `Use delete_conversation when the user explicitly asks to delete a past chat.
 Always confirm with the user before calling — this cannot be undone.`,
+		Examples: []Example{
+			{Cmd: "bite delete_conversation 12", Desc: "delete a saved chat by id"},
+		},
 		Params: []Param{
 			{Name: "conversation_id", Type: ParamInt, Required: true, Positional: true,
 				Desc: "ID of the conversation to delete."},

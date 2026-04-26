@@ -13,6 +13,9 @@ func init() {
 macro totals.`,
 		Prompt: `Call meals_recent when the user asks for their last few meals regardless of
 when they were eaten ("show my last 5 meals").`,
+		Examples: []Example{
+			{Cmd: "bite meals_recent 5", Desc: "show the last 5 meals across all dates"},
+		},
 		Params: []Param{
 			// Optional with a sensible default so `bite meals_recent` (no
 			// args) returns the last 10 meals without ceremony.

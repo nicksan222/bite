@@ -13,6 +13,9 @@ func init() {
 update.`,
 		Prompt: `Use conversations_list when the user asks what they have been talking about,
 wants to find a past chat by title, or wants the most recent conversation IDs.`,
+		Examples: []Example{
+			{Cmd: "bite conversations_list", Desc: "list saved chats"},
+		},
 		Params: []Param{
 			{Name: "limit", Type: ParamInt, Default: int64(100),
 				Desc: "Max conversations to list (default 100)."},

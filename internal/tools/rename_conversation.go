@@ -12,6 +12,9 @@ func init() {
 		Description: `Update the title of a saved conversation by ID.`,
 		Prompt: `Use rename_conversation when the user wants to retitle a past chat for easier
 recall ("rename conversation 12 to 'protein experiment'").`,
+		Examples: []Example{
+			{Cmd: `bite rename_conversation 12 "protein experiment"`, Desc: "retitle a saved chat"},
+		},
 		Params: []Param{
 			{Name: "conversation_id", Type: ParamInt, Required: true, Positional: true,
 				Desc: "ID of the conversation."},

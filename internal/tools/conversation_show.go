@@ -13,6 +13,9 @@ func init() {
 		Description: `Render every message of one saved conversation in chronological order.`,
 		Prompt: `Use conversation_show when the user asks to revisit a past chat, recall what
 was said in conversation #N, or quote earlier guidance.`,
+		Examples: []Example{
+			{Cmd: "bite conversation_show 12", Desc: "print every message in conversation 12"},
+		},
 		Params: []Param{
 			{Name: "conversation_id", Type: ParamInt, Required: true, Positional: true,
 				Desc: "ID of the conversation to display."},

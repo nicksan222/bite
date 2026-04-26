@@ -14,6 +14,9 @@ func init() {
 		Prompt: `Call get_goals before giving personalised advice that compares intake against
 targets, or when the user asks how close they are to their goals or whether
 they have room for another meal.`,
+		Examples: []Example{
+			{Cmd: "bite get_goals", Desc: "show current daily targets"},
+		},
 		Run: runGetGoals,
 	})
 }

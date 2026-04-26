@@ -23,6 +23,9 @@ treated as views of the SAME meal.`,
 		Prompt: `Use analyze_meal when the user wants a "what would this be?" estimate from media
 or text without committing it to the diary. If the user clearly wants the meal
 saved, prefer log_meal_from_media instead.`,
+		Examples: []Example{
+			{Cmd: "bite analyze_meal --file plate.jpg", Desc: "estimate from media without saving"},
+		},
 		Params: []Param{
 			{Name: "text", Type: ParamString, Positional: true,
 				Desc: "Free-form text describing the meal."},

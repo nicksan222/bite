@@ -15,6 +15,9 @@ func init() {
 totals. Date format is YYYY-MM-DD in the user's local timezone.`,
 		Prompt: `Call meals_on when the user asks about a specific past date ("what did I eat
 on the 23rd?"). Use the user's local timezone.`,
+		Examples: []Example{
+			{Cmd: "bite meals_on 2026-04-20", Desc: "show meals logged on a specific date"},
+		},
 		Params: []Param{
 			{Name: "date", Type: ParamString, Required: true, Positional: true,
 				Desc: "Calendar date in YYYY-MM-DD."},
