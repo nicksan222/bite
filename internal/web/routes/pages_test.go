@@ -160,6 +160,40 @@ func TestPages_toolsListsRegistry(t *testing.T) {
 	require.GreaterOrEqual(t, calls, 1, "ListTools must be invoked per request, not cached at boot")
 }
 
+// TestPages_toolsRendersParamBadges proves the tools page renders each
+// param with the required/optional distinction visible in the badge
+// markup. Without this, a regression that drops the required check
+// (or the params loop entirely) would still pass the name+summary
+// assertions in TestPages_toolsListsRegistry.
+func TestPages_toolsRendersParamBadges(t *testing.T) {
+	app := newApp(Deps{
+		ListTools: func() []ToolMeta {
+			return []ToolMeta{{
+				Name:    "log_meal",
+				Summary: "logs a meal",
+				Params: []ParamMeta{
+					{Name: "title", Type: "string", Required: true},
+					{Name: "kcal", Type: "float"},
+				},
+			}}
+		},
+	})
+	resp, err := app.Test(httptest.NewRequest(http.MethodGet, "/tools", nil))
+	require.NoError(t, err)
+	body, _ := io.ReadAll(resp.Body)
+	got := string(body)
+	require.Contains(t, got, "title")
+	require.Contains(t, got, "kcal")
+	require.Contains(t, got, "badge-warning",
+		"required params must wear the warning badge")
+	require.Contains(t, got, "badge-outline",
+		"optional params must wear the outline badge")
+	require.Contains(t, got, `title="required string"`,
+		"required-param hover hint must spell out the type")
+	require.Contains(t, got, `title="optional float"`,
+		"optional-param hover hint must spell out the type")
+}
+
 // TestPages_toolsHandlesNilDeps ensures the page degrades gracefully
 // without a configured ListTools (empty registry, not a crash).
 func TestPages_toolsHandlesNilDeps(t *testing.T) {
