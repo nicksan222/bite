@@ -10,6 +10,7 @@ import (
 
 	"github.com/nicksan222/bite/internal/ai"
 	"github.com/nicksan222/bite/internal/db"
+	"github.com/nicksan222/bite/internal/tools"
 	"github.com/nicksan222/bite/internal/tui"
 )
 
@@ -20,7 +21,10 @@ func init() {
 		Long: `Open the interactive chat TUI.
 
 By default a fresh conversation is created. Use --resume <id> to continue an
-existing one (see "bite conversations list" for ids).`,
+existing one (see "bite conversations_list" for ids).
+
+Inside chat, type /<name> to invoke any registered tool directly (deterministic,
+no model call). Type /help to list every available slash command.`,
 		RunE: func(cmd *cobra.Command, _ []string) error {
 			resume, _ := cmd.Flags().GetInt64("resume")
 			return runChat(cmd.Context(), resume)
@@ -60,8 +64,21 @@ func runChat(ctx context.Context, resumeID int64) error {
 		titled: len(history) > 0,
 	}
 
-	tools := makeChatTools(store)
-	prog := tui.New(ctx, client, persist, history, ai.WithTools(tools))
+	deps := tools.Deps{Store: store, AI: client, OpenAIAPIKey: cfg.OpenAIAPIKey}
+	streamOpts := []ai.StreamOption{ai.WithTools(tools.AITools(deps))}
+	slash := func(c context.Context, line string) (string, error) {
+		out := tools.Dispatch(c, deps, line)
+		if out.ParseError != nil {
+			return "", out.ParseError
+		}
+		if out.RunError != nil {
+			return "", out.RunError
+		}
+		// AI rendering produces text + optional Markdown table — same shape
+		// the model would see, which is what we want in transcript history.
+		return tools.RenderResultForChat(out.Result), nil
+	}
+	prog := tui.New(ctx, client, persist, history, streamOpts, tui.WithSlashHandler(slash))
 	_, err = prog.Run()
 	return err
 }

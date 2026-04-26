@@ -21,11 +21,29 @@ type Persister interface {
 	AppendAssistant(ctx context.Context, content string) error
 }
 
+// SlashHandler executes a slash command (e.g. "/log_meal …") and returns the
+// rendered text for the transcript. An error means the line was malformed or
+// the tool itself failed; the TUI surfaces it inline. Handlers must NOT call
+// the model — slash commands are deterministic, local-only operations.
+type SlashHandler func(ctx context.Context, line string) (string, error)
+
+// Option tweaks a New() call.
+type Option func(*model)
+
+// WithSlashHandler enables /-prefixed input. Without it, lines starting with
+// "/" are sent to the model verbatim.
+func WithSlashHandler(h SlashHandler) Option {
+	return func(m *model) { m.slash = h }
+}
+
 // New returns a configured *tea.Program. Call Run on it.
-// opts are forwarded to every ai.Client.Stream call made during the session
-// (e.g. ai.WithTools to enable tool calling).
-func New(ctx context.Context, client ai.Streamer, store Persister, history []ai.Message, opts ...ai.StreamOption) *tea.Program {
-	m := initialModel(ctx, client, store, history, opts)
+// streamOpts are forwarded to every ai.Client.Stream call made during the
+// session (e.g. ai.WithTools to enable tool calling).
+func New(ctx context.Context, client ai.Streamer, store Persister, history []ai.Message, streamOpts []ai.StreamOption, opts ...Option) *tea.Program {
+	m := initialModel(ctx, client, store, history, streamOpts)
+	for _, o := range opts {
+		o(&m)
+	}
 	return tea.NewProgram(m, tea.WithAltScreen(), tea.WithMouseCellMotion())
 }
 
@@ -52,6 +70,7 @@ type model struct {
 	streaming bool
 	pending   string // accumulated assistant text for the in-flight turn
 	streamCh  <-chan ai.StreamEvent
+	slash     SlashHandler
 
 	width, height int
 	err           error
@@ -254,6 +273,9 @@ func (m model) renderTurn(role ai.Role, content string) string {
 }
 
 func (m model) send(text string) (tea.Model, tea.Cmd) {
+	if strings.HasPrefix(text, "/") && m.slash != nil {
+		return m.handleSlash(text)
+	}
 	m.history = append(m.history, ai.Message{Role: ai.RoleUser, Content: text})
 	if m.store != nil {
 		if err := m.store.AppendUser(m.ctx, text); err != nil {
@@ -279,6 +301,36 @@ func (m model) send(text string) (tea.Model, tea.Cmd) {
 	m.viewport.GotoBottom()
 
 	return m, tea.Batch(m.readNext(), m.spinner.Tick)
+}
+
+// handleSlash executes a slash command locally, injects the result into chat
+// history, and skips the model call. The next real user message picks the
+// result up in context, so the model stays aware of what just happened.
+func (m model) handleSlash(text string) (tea.Model, tea.Cmd) {
+	out, err := m.slash(m.ctx, text)
+	if err != nil {
+		// Render inline error without polluting persisted history.
+		m.err = err
+		m.viewport.SetContent(m.renderTranscript())
+		m.viewport.GotoBottom()
+		return m, nil
+	}
+	m.err = nil
+	m.history = append(m.history,
+		ai.Message{Role: ai.RoleUser, Content: text},
+		ai.Message{Role: ai.RoleAssistant, Content: out},
+	)
+	if m.store != nil {
+		if e := m.store.AppendUser(m.ctx, text); e != nil {
+			m.err = fmt.Errorf("save message: %w", e)
+		}
+		if e := m.store.AppendAssistant(m.ctx, out); e != nil {
+			m.err = fmt.Errorf("save message: %w", e)
+		}
+	}
+	m.viewport.SetContent(m.renderTranscript())
+	m.viewport.GotoBottom()
+	return m, nil
 }
 
 func (m model) readNext() tea.Cmd {

@@ -13,15 +13,13 @@ import (
 
 // defaultSystemPrompt is the nutritionist persona injected on every chat turn
 // unless the user overrides BITE_SYSTEM_PROMPT.
+//
+// Specific tool descriptions are auto-appended from internal/tools at chat
+// startup — keep this prompt focused on persona, posture, and house style.
 const defaultSystemPrompt = `You are bite, a friendly terminal AI nutritionist.
 Help users track meals, understand calories and macros, and make healthy choices.
-When the user reports eating something — even casually ("had a salad", "just ate lunch") — call the log_meal tool to save it automatically.
-When the user asks about today's intake, remaining calories, or progress, call get_meals_today to fetch the current data.
-When the user asks about this week's intake or weekly progress, call get_meals_week.
-When giving personalised advice or comparing intake to targets, call get_goals first.
-When the user wants to set or change a nutrition target, call set_goals.
-When the user asks to delete or undo a logged meal, call delete_meal with the meal ID.
-When the user asks about their streak, consistency, or tracking habits, call get_streak.
+When the user reports eating something — even casually — call the appropriate logging tool to save it automatically.
+When the user asks about intake, progress, goals, streaks, or wants to change a target, prefer calling tools over guessing.
 Keep responses concise and scannable; this is a terminal, not a web app.`
 
 // Config is bite's runtime configuration.

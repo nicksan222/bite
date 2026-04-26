@@ -11,6 +11,7 @@ import (
 	"github.com/nicksan222/bite/internal/ai"
 	"github.com/nicksan222/bite/internal/config"
 	"github.com/nicksan222/bite/internal/db"
+	"github.com/nicksan222/bite/internal/tools"
 )
 
 var (
@@ -42,11 +43,12 @@ or video. Conversations live locally in SQLite. See CLAUDE.md for where each
 kind of change goes.
 
 Set ANTHROPIC_API_KEY (or put it in .env) before running.`,
-	Example: `  bite                                  # interactive chat (default)
-  bite analyze meal.jpg                  # estimate kcal + macros from a photo
-  bite analyze plate.jpg note.m4a -m "lunch"  # mix media + text
-  bite ask "kcal in 200g salmon?"        # one-shot question
-  bite doctor --ping                     # verify environment + model reachability`,
+	Example: `  bite                                       # interactive chat (default)
+  bite log_meal "200g pasta with pesto"       # log a meal from text
+  bite log_meal_from_media "lunch" --file plate.jpg
+  bite meals_today                            # today's intake summary
+  bite ask "kcal in 200g salmon?"             # one-shot question
+  bite doctor --ping                          # verify environment + model reachability`,
 	SilenceUsage:  true,
 	SilenceErrors: true,
 	RunE: func(cmd *cobra.Command, _ []string) error {
@@ -55,6 +57,7 @@ Set ANTHROPIC_API_KEY (or put it in .env) before running.`,
 }
 
 func Execute(ctx context.Context) error {
+	tools.RegisterCobra(rootCmd, depsForCobra)
 	return fang.Execute(
 		ctx,
 		rootCmd,
@@ -62,6 +65,46 @@ func Execute(ctx context.Context) error {
 		fang.WithCommit(buildCommit),
 		fang.WithNotifySignal(os.Interrupt),
 	)
+}
+
+// depsForCobra is invoked at the start of each tool subcommand. Opening the
+// store and AI client lazily means `bite --help` works without an API key
+// or a writable data dir.
+func depsForCobra(ctx context.Context) (tools.Deps, func(), error) {
+	cfg, err := loadConfig()
+	if err != nil {
+		return tools.Deps{}, nil, err
+	}
+	store, err := openStore(ctx, cfg)
+	if err != nil {
+		return tools.Deps{}, nil, err
+	}
+	cleanup := func() { _ = store.Close() }
+
+	deps := tools.Deps{
+		Store:        store,
+		OpenAIAPIKey: cfg.OpenAIAPIKey,
+	}
+	// AI is only opened if needed by the tool — log_meal_from_media is the
+	// only cobra path that uses it, and it constructs its own client inside
+	// the tool body via tools.LoadAI(deps).
+	deps.AI = lazyAI{cfg: cfg}
+	return deps, cleanup, nil
+}
+
+// lazyAI defers ai.Client construction until Stream is called. This keeps
+// `bite --help` and tools that don't need the model (like meals_today) from
+// failing when ANTHROPIC_API_KEY is unset.
+type lazyAI struct {
+	cfg config.Config
+}
+
+func (l lazyAI) Stream(ctx context.Context, history []ai.Message, opts ...ai.StreamOption) (<-chan ai.StreamEvent, error) {
+	c, err := openAIClient(ctx, l.cfg)
+	if err != nil {
+		return nil, err
+	}
+	return c.Stream(ctx, history, opts...)
 }
 
 // ─── shared helpers used by subcommand files ────────────────────────────────
@@ -86,6 +129,6 @@ func openAIClient(ctx context.Context, cfg config.Config) (*ai.Client, error) {
 		APIKey:       cfg.APIKey,
 		Model:        cfg.Model,
 		MaxTokens:    cfg.MaxTokens,
-		SystemPrompt: cfg.SystemPrompt,
+		SystemPrompt: cfg.SystemPrompt + tools.RenderAppendix(),
 	})
 }

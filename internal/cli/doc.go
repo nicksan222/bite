@@ -1,18 +1,14 @@
-// Package cli wires together bite's command tree.
+// Package cli wires the cobra command tree.
 //
-// # Adding a command
+// Most domain commands live in [internal/tools] — drop a file there and
+// `tools.RegisterCobra` mounts it on the root command automatically.
 //
-//  1. Create cli/<name>.go.
-//  2. Build a *cobra.Command and call rootCmd.AddCommand(cmd) from init().
-//  3. Use the shared helpers in root.go for config, store, and AI client setup.
+// This package only owns the things that aren't ordinary tools:
 //
-// The root command launches the chat TUI when invoked with no subcommand,
-// making `bite` the natural entry point for a multi-turn conversation.
+//   - root.go  — rootCmd + Execute + lazy Deps wiring
+//   - chat.go  — the interactive TUI command (cannot fit the Tool shape
+//     because it spawns a long-lived bubbletea program)
 //
-// # Shared helpers
-//
-//   - loadConfig()      — loads Config from env / .env
-//   - openStore()       — opens (and migrates) the SQLite database
-//   - openAIClient()    — creates an *ai.Client from Config
-//   - withStore()       — convenience wrapper: load config + open store + call fn
+// If you find yourself adding a third file here, it probably belongs in
+// internal/tools/ instead.
 package cli

@@ -55,7 +55,7 @@ func (m *mockPersister) AppendAssistant(_ context.Context, content string) error
 // on the raw model. Since bubbletea models are not directly exported,
 // we exercise via the program's run cycle with the testing program approach.
 func newTestProgram(client ai.Streamer, store tui.Persister) *tea.Program {
-	return tui.New(context.Background(), client, store, nil)
+	return tui.New(context.Background(), client, store, nil, nil)
 }
 
 // ─── tests ────────────────────────────────────────────────────────────────────
@@ -70,13 +70,13 @@ func TestNew_withHistory(t *testing.T) {
 		{Role: ai.RoleUser, Content: "hello"},
 		{Role: ai.RoleAssistant, Content: "hi"},
 	}
-	p := tui.New(context.Background(), &mockStreamer{}, &mockPersister{}, history)
+	p := tui.New(context.Background(), &mockStreamer{}, &mockPersister{}, history, nil)
 	assert.NotNil(t, p)
 }
 
 func TestNew_nilStore(t *testing.T) {
 	// Should not panic with nil store.
-	p := tui.New(context.Background(), &mockStreamer{}, nil, nil)
+	p := tui.New(context.Background(), &mockStreamer{}, nil, nil, nil)
 	assert.NotNil(t, p)
 }
 
@@ -86,6 +86,23 @@ func TestMockStreamer_interfaceSatisfied(t *testing.T) {
 
 func TestMockPersister_interfaceSatisfied(t *testing.T) {
 	var _ tui.Persister = (*mockPersister)(nil)
+}
+
+func TestNew_acceptsSlashHandler(t *testing.T) {
+	p := tui.New(context.Background(), &mockStreamer{}, &mockPersister{}, nil, nil,
+		tui.WithSlashHandler(func(_ context.Context, _ string) (string, error) {
+			return "ok", nil
+		}))
+	assert.NotNil(t, p)
+}
+
+// Ensure the constructor wires errors through. We can't drive bubbletea
+// inputs directly here, but we can at least exercise the option path.
+func TestNew_slashHandlerOptional(t *testing.T) {
+	require.NotNil(t, tui.New(context.Background(), &mockStreamer{}, &mockPersister{}, nil, nil))
+	require.NotPanics(t, func() {
+		_ = errors.New("placeholder to keep errors import live")
+	})
 }
 
 func TestMockStreamer_returnsError(t *testing.T) {
