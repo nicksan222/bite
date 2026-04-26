@@ -13,6 +13,9 @@ func init() {
 		Prompt: `Call delete_meal when the user wants to remove a meal entry they logged by
 mistake or wants to undo a recent log. Always confirm with the user (and
 show the meal you are about to delete) before calling.`,
+		Examples: []Example{
+			{Cmd: "bite delete_meal 42", Desc: "remove a logged meal by id"},
+		},
 		Params: []Param{
 			{Name: "meal_id", Type: ParamInt, Required: true, Positional: true,
 				Desc: "ID of the meal to delete (shown in the meals list)."},

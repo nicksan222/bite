@@ -18,6 +18,9 @@ Setting a field to 0 clears that target.`,
 		Prompt: `Call set_goals when the user explicitly asks to set, update, or change a target
 ("set my calorie goal to 2000", "I want 150g protein daily"). Omit any field
 they did not mention; it will be preserved.`,
+		Examples: []Example{
+			{Cmd: "bite set_goals --kcal=2000 --protein-g=150", Desc: "set daily targets"},
+		},
 		Params: []Param{
 			{Name: "kcal", Type: ParamFloat,
 				Desc: "Daily calorie target. Omit to keep existing value; 0 to clear."},

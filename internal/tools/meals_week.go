@@ -16,6 +16,9 @@ func init() {
 		Description: `Return all meals logged this week (Mon–today) with daily and weekly totals.`,
 		Prompt: `Call meals_week when the user asks about their weekly intake, weekly progress,
 or how they are tracking across the full week.`,
+		Examples: []Example{
+			{Cmd: "bite meals_week", Desc: "this week's meals grouped by day"},
+		},
 		Run: runMealsWeek,
 	})
 }

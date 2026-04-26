@@ -12,6 +12,9 @@ func init() {
 		Description: `Return the number of consecutive days the user has logged at least one meal.`,
 		Prompt: `Call streak when the user asks about their streak, consistency, or tracking habits;
 also useful when celebrating milestones or encouraging a return to consistency.`,
+		Examples: []Example{
+			{Cmd: "bite streak", Desc: "current daily-logging streak"},
+		},
 		Run: runStreak,
 	})
 }
