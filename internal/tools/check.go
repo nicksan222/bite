@@ -1,6 +1,7 @@
 package tools
 
 import (
+	"cmp"
 	"context"
 	"fmt"
 	"slices"
@@ -80,7 +81,7 @@ func Checks() []Check {
 	defer checkMu.RUnlock()
 	out := slices.Clone(checks)
 	slices.SortStableFunc(out, func(a, b Check) int {
-		return int(a.Severity) - int(b.Severity)
+		return cmp.Compare(a.Severity, b.Severity)
 	})
 	return out
 }
