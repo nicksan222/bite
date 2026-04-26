@@ -47,6 +47,15 @@ func TestSetGoals_omitPreservesExisting(t *testing.T) {
 	assert.Equal(t, 150.0, *g.ProteinG)
 }
 
+func TestSetGoals_storeErrorOnLoad(t *testing.T) {
+	ctx := context.Background()
+	deps := freshDeps(t)
+	require.NoError(t, deps.Store.Close()) // forces GetGoals to error
+
+	_, err := MustGet("set_goals").Run(ctx, deps, NewArgs(map[string]any{"kcal": 2000.0}))
+	require.Error(t, err)
+}
+
 func TestSetGoals_zeroClears(t *testing.T) {
 	ctx := context.Background()
 	deps := freshDeps(t)

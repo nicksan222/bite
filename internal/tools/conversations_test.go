@@ -91,3 +91,17 @@ func TestDeleteConversation_removes(t *testing.T) {
 	_, err = deps.Store.GetConversation(ctx, conv.ID)
 	require.Error(t, err)
 }
+
+func TestRenameConversation_storeError(t *testing.T) {
+	ctx := context.Background()
+	deps := freshDeps(t)
+	conv, err := deps.Store.NewConversation(ctx, "m", "")
+	require.NoError(t, err)
+	require.NoError(t, deps.Store.Close()) // closing makes Rename surface a DB error
+
+	_, err = MustGet("rename_conversation").Run(ctx, deps, NewArgs(map[string]any{
+		"conversation_id": float64(conv.ID),
+		"title":           "x",
+	}))
+	require.Error(t, err)
+}

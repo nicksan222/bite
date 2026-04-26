@@ -18,6 +18,15 @@ func TestMealsToday_empty(t *testing.T) {
 	assert.Contains(t, res.Text, "No meals logged today")
 }
 
+func TestMealsToday_storeError(t *testing.T) {
+	ctx := context.Background()
+	deps := freshDeps(t)
+	require.NoError(t, deps.Store.Close()) // forces ListMealsForDay to error
+
+	_, err := MustGet("meals_today").Run(ctx, deps, NewArgs(nil))
+	require.Error(t, err)
+}
+
 func TestMealsToday_summarises(t *testing.T) {
 	ctx := context.Background()
 	deps := freshDeps(t)
