@@ -15,8 +15,9 @@ func Register(app *fiber.App, d Deps) {
 	api.Post("/chat", chatStream(d))
 
 	htmx := app.Group("/htmx")
-	htmx.Get("/tool/:name", htmxTool(d))
-	htmx.Post("/tool/:name", htmxTool(d))
+	// One handler for GET (dashboard refresh, hx-get) and POST (form
+	// submit, hx-post) — the body parser handles either flavour.
+	htmx.Add([]string{fiber.MethodGet, fiber.MethodPost}, "/tool/:name", htmxTool(d))
 
 	app.Get("/static/*", serveStatic())
 
