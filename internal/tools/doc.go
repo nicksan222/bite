@@ -14,7 +14,7 @@
 //   - RenderAppendix        — "Available tools" block for the system prompt (skips SkipAI)
 //   - BuildSystemPrompt     — assembles persona + appendix in one step
 //   - Checks                — full Check list iterated by the doctor tool
-//   - LoadConfig / OpenStore / OpenAIClient / CobraDepsProvider — wiring helpers
+//   - LoadConfig / OpenStore / BuildAIClient / CobraDepsProvider — wiring helpers
 //
 // To add a tool: drop a file in this package with an init() that calls
 // Register, plus a focused unit test that calls Run with an in-memory Deps.

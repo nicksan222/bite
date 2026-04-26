@@ -17,23 +17,15 @@ func init() {
 			if err != nil {
 				return "", err
 			}
-			return fmt.Sprintf("DSN=%s model=%s", cfg.DSN, cfg.Model), nil
-		},
-	})
-
-	RegisterCheck(Check{
-		Name:     "config: api key",
-		Severity: SeverityHard,
-		Desc:     "ANTHROPIC_API_KEY is set",
-		Run: func(_ context.Context) (string, error) {
-			cfg, err := config.Load()
-			if err != nil {
-				return "", err
+			provider := cfg.Provider
+			if provider == "" {
+				provider = "(auto)"
 			}
-			if err := cfg.RequireAPIKey(); err != nil {
-				return "", err
+			model := cfg.Model
+			if model == "" {
+				model = "(default)"
 			}
-			return fmt.Sprintf("ANTHROPIC_API_KEY set (len=%d)", len(cfg.APIKey)), nil
+			return fmt.Sprintf("DSN=%s provider=%s model=%s", cfg.DSN, provider, model), nil
 		},
 	})
 }

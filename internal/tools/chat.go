@@ -34,19 +34,20 @@ no model call). Type /help to list every available slash command.`,
 	})
 }
 
-// runChat is the single source of truth for launching the chat TUI. Both
-// `bite` (via SetDefault) and `bite chat` (via the named subcommand) reach
-// here through the same cobra closure, so there's exactly one place that
-// wires the registry into stream options + slash dispatch and runs the
-// bubbletea program.
-//
-// Validates the AI client up front via Deps.RequireAI so a missing
-// ANTHROPIC_API_KEY surfaces before the TUI opens.
+// runChat is the single launcher for the chat TUI — `bite` (no args)
+// and `bite chat` both land here. RequireAI is called up front so any
+// bootstrap completes before the TUI opens.
 func runChat(ctx context.Context, deps Deps, args Args) (Result, error) {
 	if err := deps.RequireAI(); err != nil {
 		return Result{}, err
 	}
-	convID, history, err := PrepareSession(ctx, deps.Store, deps.Model, args.Int("resume"))
+	model := deps.Model
+	if r, ok := deps.AI.(interface{ ResolvedModel() string }); ok {
+		// Pick the post-bootstrap model so the conversation row
+		// records what actually answered.
+		model = r.ResolvedModel()
+	}
+	convID, history, err := PrepareSession(ctx, deps.Store, model, args.Int("resume"))
 	if err != nil {
 		return Result{}, err
 	}

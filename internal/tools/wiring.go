@@ -3,15 +3,16 @@ package tools
 import (
 	"context"
 	"fmt"
+	"os"
+	"sync"
 
 	"github.com/nicksan222/bite/internal/ai"
 	"github.com/nicksan222/bite/internal/config"
 	"github.com/nicksan222/bite/internal/db"
 )
 
-// LoadConfig wraps config.Load with a uniform error prefix. Centralised so
-// every entry point (cobra subcommands, chat launcher, future REST mode)
-// reports configuration failures the same way.
+// LoadConfig wraps config.Load with a uniform error prefix so every
+// entry point reports configuration failures the same way.
 func LoadConfig() (config.Config, error) {
 	cfg, err := config.Load()
 	if err != nil {
@@ -20,31 +21,35 @@ func LoadConfig() (config.Config, error) {
 	return cfg, nil
 }
 
-// OpenStore opens (and migrates) the SQLite database at cfg.DSN.
 func OpenStore(ctx context.Context, cfg config.Config) (*db.Store, error) {
 	return db.Open(ctx, cfg.DSN)
 }
 
-// OpenAIClient builds an *ai.Client from cfg with the assembled system
-// prompt (default persona or BITE_SYSTEM_PROMPT override, plus the
-// auto-generated tool appendix). Fails fast if ANTHROPIC_API_KEY is unset.
-func OpenAIClient(ctx context.Context, cfg config.Config) (*ai.Client, error) {
-	if err := cfg.RequireAPIKey(); err != nil {
+// BuildAIClient resolves cfg.Provider, validates the resolved provider's
+// credentials, and constructs a streaming Client.
+func BuildAIClient(ctx context.Context, cfg config.Config) (*ai.Client, error) {
+	spec, err := ai.Resolve(ai.Provider(cfg.Provider))
+	if err != nil {
+		return nil, err
+	}
+	pcfg := spec.LoadConfig(cfg.Model, cfg.MaxTokens)
+	if err := spec.Validate(pcfg); err != nil {
 		return nil, err
 	}
 	return ai.NewClient(ctx, ai.ClientConfig{
-		APIKey:       cfg.APIKey,
-		Model:        cfg.Model,
-		MaxTokens:    cfg.MaxTokens,
+		Provider:     spec.Name,
+		APIKey:       pcfg.APIKey,
+		BaseURL:      pcfg.BaseURL,
+		Model:        pcfg.Model,
+		MaxTokens:    pcfg.MaxTokens,
 		SystemPrompt: BuildSystemPrompt(cfg.SystemPrompt),
 	})
 }
 
-// CobraDepsProvider returns a DepsProvider suitable for tools.RegisterCobra.
-// It opens the store eagerly (so failures surface before Run starts) and
-// defers AI-client construction until a tool actually calls Stream — that
-// way `bite --help` works with no API key and tools that don't need the
-// model (meals_today, get_goals, …) don't trigger network setup.
+// CobraDepsProvider opens the store eagerly and defers AI-client
+// construction until first Stream — so `bite --help` and tools that
+// don't need the model don't trigger network setup or the bootstrap
+// prompt.
 func CobraDepsProvider(ctx context.Context) (Deps, func(), error) {
 	cfg, err := LoadConfig()
 	if err != nil {
@@ -57,34 +62,148 @@ func CobraDepsProvider(ctx context.Context) (Deps, func(), error) {
 	cleanup := func() { _ = store.Close() }
 	return Deps{
 		Store:        store,
-		AI:           lazyAI{cfg: cfg},
-		Model:        cfg.Model,
+		AI:           &lazyAI{cfg: cfg, hooks: defaultBootstrapHooks(store)},
+		Model:        resolvedModel(cfg),
 		OpenAIAPIKey: cfg.OpenAIAPIKey,
 	}, cleanup, nil
 }
 
-// lazyAI is an ai.Streamer that constructs the real client only on first
-// Stream. Used by CobraDepsProvider so tools without AI needs don't pay
-// the API-key check up front.
-type lazyAI struct {
-	cfg config.Config
+func resolvedModel(cfg config.Config) string {
+	if cfg.Model != "" {
+		return cfg.Model
+	}
+	spec, err := ai.Resolve(ai.Provider(cfg.Provider))
+	if err != nil {
+		return ""
+	}
+	return spec.DefaultModel
 }
 
-func (l lazyAI) Stream(ctx context.Context, history []ai.Message, opts ...ai.StreamOption) (<-chan ai.StreamEvent, error) {
-	c, err := OpenAIClient(ctx, l.cfg)
+// lazyAI defers Client construction (and the once-per-process Ollama
+// bootstrap consent flow) until first use.
+type lazyAI struct {
+	cfg   config.Config
+	hooks bootstrapHooks
+
+	once     sync.Once
+	resolved config.Config
+	err      error
+}
+
+func (l *lazyAI) ensure(ctx context.Context) (config.Config, error) {
+	l.once.Do(func() {
+		l.resolved, l.err = ensureProviderOrBootstrap(ctx, l.cfg, l.hooks)
+	})
+	return l.resolved, l.err
+}
+
+func (l *lazyAI) Stream(ctx context.Context, history []ai.Message, opts ...ai.StreamOption) (<-chan ai.StreamEvent, error) {
+	cfg, err := l.ensure(ctx)
+	if err != nil {
+		return nil, err
+	}
+	c, err := BuildAIClient(ctx, cfg)
 	if err != nil {
 		return nil, err
 	}
 	return c.Stream(ctx, history, opts...)
 }
 
-// EnsureUsable lets a tool fail fast on missing ANTHROPIC_API_KEY before
-// blocking on user input. The chat tool calls this (via Deps.RequireAI) so
-// `bite chat` with no key errors immediately instead of opening the TUI and
-// breaking on the first message.
-func (l lazyAI) EnsureUsable() error { return l.cfg.RequireAPIKey() }
+func (l *lazyAI) EnsureUsable() error {
+	_, err := l.ensure(context.Background())
+	return err
+}
 
-// aiEnsurer is satisfied by lazyAI (and any future eagerly-built client that
-// wants the same fail-fast contract). RequireAI uses a duck-typed check so
-// production deps work without forcing test deps to grow a no-op method.
+// ResolvedModel returns the model the AI layer settled on, including any
+// provider switch the bootstrap performed. Used by chat persistence so
+// the conversation row records what actually answered.
+func (l *lazyAI) ResolvedModel() string {
+	cfg, err := l.ensure(context.Background())
+	if err != nil {
+		return resolvedModel(l.cfg)
+	}
+	return resolvedModel(cfg)
+}
+
+// ensureProviderOrBootstrap decides what to do when AI is needed:
+// explicit BITE_PROVIDER=ollama runs the (idempotent) bootstrap with no
+// prompt; an explicit non-ollama provider or any auto-detected
+// credential falls through to Validate; otherwise the user is asked
+// once, and a yes is persisted so future runs skip straight to
+// bootstrap.
+func ensureProviderOrBootstrap(ctx context.Context, cfg config.Config, h bootstrapHooks) (config.Config, error) {
+	if cfg.Provider == string(ai.ProviderOllama) {
+		if err := bootstrapOllama(ctx, cfg, h); err != nil {
+			return cfg, err
+		}
+		return cfg, nil
+	}
+
+	if cfg.Provider != "" || ai.AnyConfigured() == nil {
+		return cfg, validateExisting(cfg)
+	}
+
+	if h.HasConsent(ctx) {
+		if err := bootstrapOllama(ctx, cfg, h); err != nil {
+			return cfg, err
+		}
+		cfg.Provider = string(ai.ProviderOllama)
+		return cfg, nil
+	}
+
+	if !h.PromptConsent() {
+		return cfg, ai.AnyConfigured()
+	}
+	if err := bootstrapOllama(ctx, cfg, h); err != nil {
+		return cfg, err
+	}
+	if err := h.RecordConsent(ctx); err != nil {
+		// Best-effort: bootstrap already worked; we'll just re-prompt
+		// next run if the write fails.
+		fmt.Fprintln(os.Stderr, "warning:", err)
+	}
+	cfg.Provider = string(ai.ProviderOllama)
+	return cfg, nil
+}
+
+func bootstrapOllama(ctx context.Context, cfg config.Config, h bootstrapHooks) error {
+	spec, ok := ai.Lookup(ai.ProviderOllama)
+	if !ok {
+		return fmt.Errorf("ollama provider not registered")
+	}
+	pcfg := spec.LoadConfig(cfg.Model, cfg.MaxTokens)
+	return h.Bootstrap(ctx, pcfg.Model, pcfg.BaseURL)
+}
+
+func validateExisting(cfg config.Config) error {
+	spec, err := ai.Resolve(ai.Provider(cfg.Provider))
+	if err != nil {
+		return err
+	}
+	return spec.Validate(spec.LoadConfig(cfg.Model, cfg.MaxTokens))
+}
+
+// bootstrapHooks isolates side-effects so tests can stub them.
+type bootstrapHooks struct {
+	HasConsent    func(ctx context.Context) bool
+	RecordConsent func(ctx context.Context) error
+	PromptConsent func() bool
+	Bootstrap     func(ctx context.Context, model, baseURL string) error
+}
+
+func defaultBootstrapHooks(store db.Storer) bootstrapHooks {
+	return bootstrapHooks{
+		HasConsent:    func(ctx context.Context) bool { return HasOllamaConsent(ctx, store) },
+		RecordConsent: func(ctx context.Context) error { return RecordOllamaConsent(ctx, store) },
+		PromptConsent: func() bool {
+			return Confirm(os.Stdin, os.Stderr,
+				"No AI provider keys configured. Install and run Ollama locally?")
+		},
+		Bootstrap: func(ctx context.Context, model, baseURL string) error {
+			return ai.DefaultBootstrap(model, baseURL).Run(ctx, os.Stderr)
+		},
+	}
+}
+
+// aiEnsurer is duck-typed so test deps don't need a no-op method.
 type aiEnsurer interface{ EnsureUsable() error }

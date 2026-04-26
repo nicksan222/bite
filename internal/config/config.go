@@ -1,7 +1,6 @@
 package config
 
 import (
-	"errors"
 	"fmt"
 	"os"
 	"path/filepath"
@@ -11,19 +10,18 @@ import (
 	"github.com/joho/godotenv"
 )
 
-// Config is bite's runtime configuration.
+// Config is bite's runtime configuration. Every setting is an env var;
+// add a field with the right `env:"…"` tag to add a knob.
 //
-// All settings come from environment variables. To add a setting, add a
-// struct field with the right `env:"…"` tag — no other wiring needed.
-//
-// SystemPrompt is intentionally empty by default; the chat persona lives
-// next to the tool registry (tools.DefaultPersona) so callers see one
-// source of truth. Set BITE_SYSTEM_PROMPT to override.
+// Per-provider AI credentials are NOT parsed here — each provider in
+// internal/ai reads its own env var so adding a backend is a one-file
+// change. OpenAIAPIKey is the exception: media/Whisper transcription
+// uses it regardless of the chat provider.
 type Config struct {
 	DSN          string `env:"BITE_DB"`
-	APIKey       string `env:"ANTHROPIC_API_KEY"`
+	Provider     string `env:"BITE_PROVIDER"`
 	OpenAIAPIKey string `env:"OPENAI_API_KEY"`
-	Model        string `env:"BITE_MODEL"          envDefault:"claude-sonnet-4-6"`
+	Model        string `env:"BITE_MODEL"`
 	MaxTokens    int    `env:"BITE_MAX_TOKENS"     envDefault:"4096"`
 	SystemPrompt string `env:"BITE_SYSTEM_PROMPT"`
 }
@@ -51,11 +49,4 @@ func Load() (Config, error) {
 	}
 
 	return c, nil
-}
-
-func (c Config) RequireAPIKey() error {
-	if c.APIKey == "" {
-		return errors.New("missing ANTHROPIC_API_KEY — export your key, or add it to a .env file:\n\n  export ANTHROPIC_API_KEY=sk-ant-…")
-	}
-	return nil
 }

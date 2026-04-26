@@ -36,18 +36,22 @@ func TestOpenStore_inMemory(t *testing.T) {
 	defer store.Close()
 }
 
-func TestOpenAIClient_missingKey(t *testing.T) {
+func TestBuildAIClient_missingKey(t *testing.T) {
+	t.Setenv("ANTHROPIC_API_KEY", "")
+	t.Setenv("OPENAI_API_KEY", "")
+	t.Setenv("GEMINI_API_KEY", "")
 	cfg := config.Config{}
-	_, err := OpenAIClient(context.Background(), cfg)
+	_, err := BuildAIClient(context.Background(), cfg)
 	require.Error(t, err)
 }
 
-func TestOpenAIClient_success(t *testing.T) {
+func TestBuildAIClient_success(t *testing.T) {
+	t.Setenv("ANTHROPIC_API_KEY", "sk-ant-test-fake")
 	cfg := config.Config{
-		APIKey: "sk-ant-test-fake",
-		Model:  "claude-haiku-4-5",
+		Provider: "anthropic",
+		Model:    "claude-haiku-4-5",
 	}
-	client, err := OpenAIClient(context.Background(), cfg)
+	client, err := BuildAIClient(context.Background(), cfg)
 	require.NoError(t, err)
 	assert.NotNil(t, client)
 }
@@ -91,22 +95,31 @@ func TestCobraDepsProvider_storeOpenError(t *testing.T) {
 }
 
 func TestLazyAI_streamPropagatesAuthError(t *testing.T) {
-	// No API key → openAIClient returns error → lazyAI.Stream surfaces it.
-	la := lazyAI{cfg: config.Config{Model: "claude-x", MaxTokens: 1}}
+	t.Setenv("ANTHROPIC_API_KEY", "")
+	t.Setenv("OPENAI_API_KEY", "")
+	t.Setenv("GEMINI_API_KEY", "")
+	la := &lazyAI{
+		cfg:   config.Config{Provider: "anthropic", Model: "claude-x", MaxTokens: 1},
+		hooks: stubHooksThatNeverPrompt(),
+	}
 	_, err := la.Stream(context.Background(), nil)
 	require.Error(t, err)
 }
 
 func TestLazyAI_streamDelegatesWhenClientBuilt(t *testing.T) {
-	// With a valid (fake) key, OpenAIClient succeeds; lazyAI.Stream then
-	// delegates to *ai.Client.Stream. That call can fail synchronously when
-	// the underlying eino model rejects auth, but either way we exercise
-	// the post-OpenAIClient code path that the cfg-error branch can't reach.
-	la := lazyAI{cfg: config.Config{
-		APIKey:    "sk-ant-test-fake",
-		Model:     "claude-haiku-4-5",
-		MaxTokens: 16,
-	}}
+	// With a valid (fake) key, BuildAIClient succeeds; lazyAI.Stream then
+	// delegates to *ai.Client.Stream. The eino model may reject the fake
+	// key synchronously, which is fine — both outcomes exercise the
+	// post-build path that the cfg-error branch can't reach.
+	t.Setenv("ANTHROPIC_API_KEY", "sk-ant-test-fake")
+	la := &lazyAI{
+		cfg: config.Config{
+			Provider:  "anthropic",
+			Model:     "claude-haiku-4-5",
+			MaxTokens: 16,
+		},
+		hooks: stubHooksThatNeverPrompt(),
+	}
 	ch, err := la.Stream(context.Background(), nil)
 	if err != nil {
 		// Eino refused the fake key synchronously — that's fine, we still
@@ -116,5 +129,17 @@ func TestLazyAI_streamDelegatesWhenClientBuilt(t *testing.T) {
 	// Otherwise drain the channel; the auth error surfaces as an event.
 	for ev := range ch {
 		_ = ev
+	}
+}
+
+// stubHooksThatNeverPrompt fails the test if the consent flow is ever
+// triggered. Use it for tests that should reach Validate without going
+// through the bootstrap branch — e.g. when a real provider key is set.
+func stubHooksThatNeverPrompt() bootstrapHooks {
+	return bootstrapHooks{
+		HasConsent:    func(context.Context) bool { return false },
+		RecordConsent: func(context.Context) error { return nil },
+		PromptConsent: func() bool { return false },
+		Bootstrap:     func(context.Context, string, string) error { return nil },
 	}
 }

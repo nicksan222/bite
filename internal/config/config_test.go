@@ -12,48 +12,44 @@ import (
 
 func TestLoadDefaults(t *testing.T) {
 	t.Setenv("BITE_DB", "")
-	t.Setenv("ANTHROPIC_API_KEY", "")
+	t.Setenv("BITE_PROVIDER", "")
 	t.Setenv("BITE_MODEL", "")
 	t.Setenv("BITE_MAX_TOKENS", "")
 	t.Setenv("BITE_SYSTEM_PROMPT", "")
+	t.Setenv("OPENAI_API_KEY", "")
 	t.Setenv("XDG_DATA_HOME", t.TempDir())
 
 	c, err := Load()
 	require.NoError(t, err)
 
-	assert.Equal(t, "claude-sonnet-4-6", c.Model)
+	assert.Empty(t, c.Provider, "provider stays empty so the AI registry resolves it")
+	assert.Empty(t, c.Model, "model stays empty so each provider falls back to its DefaultModel")
 	assert.Equal(t, 4096, c.MaxTokens)
 	assert.Equal(t, "bite.db", filepath.Base(c.DSN))
-}
-
-func TestRequireAPIKey(t *testing.T) {
-	c := Config{}
-	require.Error(t, c.RequireAPIKey(), "RequireAPIKey should fail with empty key")
-	c.APIKey = "sk-test"
-	require.NoError(t, c.RequireAPIKey(), "RequireAPIKey should succeed")
 }
 
 func TestEnvOverrides(t *testing.T) {
 	dir := t.TempDir()
 	dsn := filepath.Join(dir, "custom.db")
 	t.Setenv("BITE_DB", dsn)
-	t.Setenv("BITE_MODEL", "claude-haiku-4-5")
+	t.Setenv("BITE_PROVIDER", "openai")
+	t.Setenv("BITE_MODEL", "gpt-4o")
 	t.Setenv("BITE_MAX_TOKENS", "1024")
 	t.Setenv("BITE_SYSTEM_PROMPT", "be terse")
-	t.Setenv("ANTHROPIC_API_KEY", "sk-test")
+	t.Setenv("OPENAI_API_KEY", "sk-test")
 
 	c, err := Load()
 	require.NoError(t, err)
 	assert.Equal(t, dsn, c.DSN)
-	assert.Equal(t, "claude-haiku-4-5", c.Model)
+	assert.Equal(t, "openai", c.Provider)
+	assert.Equal(t, "gpt-4o", c.Model)
 	assert.Equal(t, 1024, c.MaxTokens)
 	assert.Equal(t, "be terse", c.SystemPrompt)
-	assert.Equal(t, "sk-test", c.APIKey)
+	assert.Equal(t, "sk-test", c.OpenAIAPIKey)
 }
 
 func TestInvalidMaxTokens(t *testing.T) {
 	t.Setenv("BITE_MAX_TOKENS", "0")
-	t.Setenv("ANTHROPIC_API_KEY", "")
 	t.Setenv("XDG_DATA_HOME", t.TempDir())
 	_, err := Load()
 	require.Error(t, err)

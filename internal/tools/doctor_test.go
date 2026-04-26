@@ -12,6 +12,8 @@ import (
 
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
+
+	"github.com/nicksan222/bite/internal/db"
 )
 
 func TestChecks_returnsRegistered(t *testing.T) {
@@ -144,6 +146,29 @@ func TestDoctor_ffmpegSuccessPath(t *testing.T) {
 	assert.Contains(t, res.Text, "video keyframe extraction available")
 }
 
+func TestDoctor_anyConfiguredPassesWithRecordedOllamaConsent(t *testing.T) {
+	// Pin the UX promise: a user who consented to Ollama yesterday
+	// shouldn't see a hard "no provider configured" failure today just
+	// because no env keys are set.
+	dir := t.TempDir()
+	dsn := dir + "/test.db"
+	t.Setenv("BITE_DB", dsn)
+	t.Setenv("BITE_MAX_TOKENS", "")
+	t.Setenv("ANTHROPIC_API_KEY", "")
+	t.Setenv("OPENAI_API_KEY", "")
+	t.Setenv("GEMINI_API_KEY", "")
+	t.Setenv("XDG_DATA_HOME", t.TempDir())
+
+	store, err := db.Open(t.Context(), dsn)
+	require.NoError(t, err)
+	require.NoError(t, RecordOllamaConsent(t.Context(), store))
+	require.NoError(t, store.Close())
+
+	res, err := MustGet("doctor").Run(t.Context(), Deps{}, NewArgs(map[string]any{"ping": false}))
+	require.NoError(t, err, "doctor output:\n%s", res.Text)
+	assert.Contains(t, res.Text, "Ollama consented")
+}
+
 func TestDoctor_dbCheckFailsWithBadDSN(t *testing.T) {
 	// Pointing BITE_DB at a directory (not a file) exercises the db.Open
 	// error branch inside the "db: open + migrate" check. Using t.TempDir()
@@ -171,10 +196,10 @@ func TestDoctor_configLoadFailureBubblesIntoChecks(t *testing.T) {
 }
 
 func TestDoctor_pingWithFakeKeyReachesStream(t *testing.T) {
-	// With a fake API key set, RequireAPIKey passes and the ping check
-	// proceeds to NewClient + Stream, where eino's claude model rejects
-	// the fake key. The doctor surfaces it as a hard failure but we get
-	// to exercise the Stream-error branch inside the ping closure.
+	// With a fake API key set, the provider's Validate passes and the
+	// ping check proceeds to NewClient + Stream, where eino's claude
+	// model rejects the fake key. The doctor surfaces it as a hard
+	// failure but we get to exercise the Stream-error branch.
 	t.Setenv("BITE_DB", t.TempDir()+"/test.db")
 	t.Setenv("BITE_MODEL", "claude-haiku-4-5")
 	t.Setenv("BITE_MAX_TOKENS", "")

@@ -18,18 +18,16 @@ func init() {
 			if err != nil {
 				return "", err
 			}
-			if err := cfg.RequireAPIKey(); err != nil {
-				return "", err
-			}
-			client, err := ai.NewClient(ctx, ai.ClientConfig{
-				APIKey: cfg.APIKey, Model: cfg.Model, MaxTokens: 16,
-			})
+			cfg.MaxTokens = 16
+			client, err := BuildAIClient(ctx, cfg)
 			if err != nil {
 				return "", err
 			}
-			ch, err := client.Stream(ctx, []ai.Message{
-				{Role: ai.RoleUser, Content: "say 'pong' and nothing else"},
-			})
+			// Skip the persona for the ping — the user message alone is
+			// enough to elicit "pong".
+			ch, err := client.Stream(ctx,
+				[]ai.Message{{Role: ai.RoleUser, Content: "say 'pong' and nothing else"}},
+				ai.WithSystemPrompt(""))
 			if err != nil {
 				return "", err
 			}
@@ -41,7 +39,8 @@ func init() {
 					break
 				}
 			}
-			return "model responded", nil
+			spec, _ := ai.Resolve(ai.Provider(cfg.Provider))
+			return "model responded via " + string(spec.Name), nil
 		},
 	})
 }

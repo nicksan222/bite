@@ -26,7 +26,7 @@ import (
 func chatStart(d Deps) fiber.Handler {
 	return func(c fiber.Ctx) error {
 		if d.AI == nil {
-			return htmlError(c, http.StatusServiceUnavailable, "AI not configured (set ANTHROPIC_API_KEY)")
+			return htmlError(c, http.StatusServiceUnavailable, "AI not configured (set an AI provider key — e.g. ANTHROPIC_API_KEY)")
 		}
 		message := strings.TrimSpace(c.FormValue("message"))
 		if message == "" {
@@ -87,7 +87,7 @@ func chatStream(d Deps) fiber.Handler {
 // instead of branching between JSON and SSE responses.
 func runChatStream(ctx context.Context, d Deps, turnID string, w *bufio.Writer) {
 	if d.AI == nil {
-		writeSSEErrorAndDone(w, "AI not configured (set ANTHROPIC_API_KEY)")
+		writeSSEErrorAndDone(w, "AI not configured (set an AI provider key — e.g. ANTHROPIC_API_KEY)")
 		return
 	}
 	turn, ok := turnStore.pop(turnID)
