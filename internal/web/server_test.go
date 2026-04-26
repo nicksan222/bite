@@ -71,6 +71,29 @@ func TestConfig_Addr(t *testing.T) {
 	require.Equal(t, "[::1]:8787", Config{Host: "::1"}.Addr())
 }
 
+// TestServer_ListenReportsBindError covers the second select case in
+// Listen: when app.Listen fails (here, port already in use), the error
+// must surface from Listen instead of hanging on errCh forever.
+func TestServer_ListenReportsBindError(t *testing.T) {
+	hold, err := net.Listen("tcp", "127.0.0.1:0")
+	require.NoError(t, err)
+	defer hold.Close()
+	port := hold.Addr().(*net.TCPAddr).Port
+
+	srv := New(Deps{})
+	done := make(chan error, 1)
+	go func() {
+		done <- srv.Listen(context.Background(), Config{Host: "127.0.0.1", Port: port})
+	}()
+	select {
+	case err := <-done:
+		require.Error(t, err)
+		require.NotErrorIs(t, err, context.Canceled, "bind failure must not be reported as ctx.Canceled")
+	case <-time.After(3 * time.Second):
+		t.Fatal("Listen did not surface bind error within 3s")
+	}
+}
+
 // TestServer_ListenShutsDownOnCancel boots Listen on a random local port
 // and cancels its context. Listen must unwind through ShutdownWithContext
 // and return ctx.Err() promptly — proving the goroutine + select + shutdown
