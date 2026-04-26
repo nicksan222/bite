@@ -60,7 +60,7 @@ func analyzeFromArgs(ctx context.Context, deps Deps, args Args) (*ai.MealAnalysi
 		FramesPerVideo: 4,
 	}
 	for _, f := range files {
-		if strings.HasPrefix(f, "http://") || strings.HasPrefix(f, "https://") {
+		if isHTTPURL(f) {
 			in.MediaURLs = append(in.MediaURLs, f)
 		} else {
 			in.MediaPaths = append(in.MediaPaths, f)

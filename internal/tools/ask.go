@@ -84,8 +84,16 @@ func runAsk(ctx context.Context, deps Deps, args Args) (Result, error) {
 }
 
 func asImageAttachment(v string) ai.Attachment {
-	if strings.HasPrefix(v, "http://") || strings.HasPrefix(v, "https://") {
+	if isHTTPURL(v) {
 		return ai.Attachment{URL: v}
 	}
 	return ai.Attachment{Path: v}
+}
+
+// isHTTPURL reports whether s starts with http:// or https://. Shared by
+// ask (image attachments) and analyze_meal (media routing) so they apply
+// the same URL-vs-path heuristic — `bite ask --image foo.jpg` and `bite
+// analyze_meal --file foo.jpg` should classify a string the same way.
+func isHTTPURL(s string) bool {
+	return strings.HasPrefix(s, "http://") || strings.HasPrefix(s, "https://")
 }
