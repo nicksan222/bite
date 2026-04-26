@@ -164,3 +164,61 @@ func TestFlagName_kebabsUnderscores(t *testing.T) {
 	assert.Equal(t, "protein-g", flagName(Param{Name: "protein_g"}))
 	assert.Equal(t, "log-meal-from-media", flagName(Param{Name: "log_meal_from_media"}))
 }
+
+// isSnakeCase exhaustively — these guards stop garbage names from leaking
+// into AI tool specs and CLI subcommands, so the rules need explicit tests.
+func TestIsSnakeCase(t *testing.T) {
+	cases := map[string]bool{
+		"":                    false, // empty
+		"foo":                 true,
+		"foo_bar":             true,
+		"foo_bar_baz":         true,
+		"foo123":              true,
+		"foo_bar_42":          true,
+		"_foo":                false, // leading underscore
+		"foo_":                false, // trailing underscore
+		"123foo":              false, // leading digit
+		"Foo":                 false, // uppercase
+		"FOO":                 false,
+		"foo-bar":             false, // hyphen
+		"foo bar":             false, // space
+		"foo.bar":             false, // dot
+		"foo$":                false, // special char
+		"meals_today":         true,
+		"log_meal":            true,
+		"log_meal_from_media": true,
+	}
+	for input, want := range cases {
+		assert.Equal(t, want, isSnakeCase(input), "isSnakeCase(%q)", input)
+	}
+}
+
+func TestValidate_emptyName_fails(t *testing.T) {
+	tt := noopTool("ok")
+	tt.Name = ""
+	assert.Error(t, tt.validate())
+}
+
+func TestValidate_nilRun_fails(t *testing.T) {
+	tt := noopTool("ok")
+	tt.Run = nil
+	assert.Error(t, tt.validate())
+}
+
+func TestValidate_emptySummary_fails(t *testing.T) {
+	tt := noopTool("ok")
+	tt.Summary = ""
+	assert.Error(t, tt.validate())
+}
+
+func TestValidate_emptyDescription_fails(t *testing.T) {
+	tt := noopTool("ok")
+	tt.Description = ""
+	assert.Error(t, tt.validate())
+}
+
+func TestValidate_emptyParamName_fails(t *testing.T) {
+	tt := noopTool("ok")
+	tt.Params = []Param{{Name: "", Type: ParamString}}
+	assert.Error(t, tt.validate())
+}
