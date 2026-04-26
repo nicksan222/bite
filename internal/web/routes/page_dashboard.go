@@ -11,10 +11,10 @@ type dashboardCard struct {
 }
 
 var dashboardCards = []dashboardCard{
-	{"meals_today", "Today", "Everything logged today, with macro totals."},
-	{"meals_week", "This week", "Last 7 days of meals — quick scan for patterns."},
-	{"streak", "Streak", "How many days in a row you've logged at least one meal."},
-	{"get_goals", "Goals", "Calorie and macro targets currently configured."},
+	{Tool: "meals_today", Title: "Today", Desc: "Everything logged today, with macro totals."},
+	{Tool: "meals_week", Title: "This week", Desc: "Last 7 days of meals — quick scan for patterns."},
+	{Tool: "streak", Title: "Streak", Desc: "How many days in a row you've logged at least one meal."},
+	{Tool: "get_goals", Title: "Goals", Desc: "Calorie and macro targets currently configured."},
 }
 
 // pageDashboard handles GET /dashboard. The cards' bodies populate via
