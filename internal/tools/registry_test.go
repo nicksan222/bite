@@ -301,3 +301,21 @@ func TestValidate_reservedName_fails(t *testing.T) {
 	// that name would silently shadow it from the user.
 	assert.Error(t, noopTool("help").validate())
 }
+
+func TestValidate_defaultTypeMismatch_fails(t *testing.T) {
+	tt := noopTool("bad_default")
+	tt.Params = []Param{{Name: "n", Type: ParamInt, Default: "not-an-int"}}
+	assert.Error(t, tt.validate())
+}
+
+func TestValidate_defaultTypeMatch_passes(t *testing.T) {
+	tt := noopTool("good_default")
+	tt.Params = []Param{
+		{Name: "s", Type: ParamString, Default: "hi"},
+		{Name: "i", Type: ParamInt, Default: int64(7)},
+		{Name: "f", Type: ParamFloat, Default: 3.14},
+		{Name: "b", Type: ParamBool, Default: true},
+		{Name: "xs", Type: ParamStringList, Default: []string{"a"}},
+	}
+	assert.NoError(t, tt.validate())
+}

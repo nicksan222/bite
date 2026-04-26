@@ -117,6 +117,9 @@ func (t Tool) validate() error {
 			return fmt.Errorf("tool %q: duplicate param %q", t.Name, p.Name)
 		}
 		seen[p.Name] = struct{}{}
+		if err := validateDefault(t.Name, p); err != nil {
+			return err
+		}
 		if p.Positional {
 			if !p.Required {
 				sawOptionalPositional = true
@@ -124,6 +127,36 @@ func (t Tool) validate() error {
 				return fmt.Errorf("tool %q: required positional %q must come before optional positionals", t.Name, p.Name)
 			}
 		}
+	}
+	return nil
+}
+
+// validateDefault rejects Param.Default values whose Go type doesn't match
+// the declared ParamType. Without this, the cobra adapter would silently
+// substitute the zero value (the type assertion in bindFlags returns ok=false)
+// and the user would see a default that doesn't match the spec.
+func validateDefault(toolName string, p Param) error {
+	if p.Default == nil {
+		return nil
+	}
+	ok := false
+	switch p.Type {
+	case ParamString:
+		_, ok = p.Default.(string)
+	case ParamInt:
+		switch p.Default.(type) {
+		case int, int64:
+			ok = true
+		}
+	case ParamFloat:
+		_, ok = p.Default.(float64)
+	case ParamBool:
+		_, ok = p.Default.(bool)
+	case ParamStringList:
+		_, ok = p.Default.([]string)
+	}
+	if !ok {
+		return fmt.Errorf("tool %q: param %q Default has wrong Go type for its ParamType", toolName, p.Name)
 	}
 	return nil
 }
