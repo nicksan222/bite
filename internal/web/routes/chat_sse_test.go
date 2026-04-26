@@ -23,7 +23,7 @@ func TestPumpStreamEvents_assemblesWhenFinalEmpty(t *testing.T) {
 	close(ch)
 
 	var buf strings.Builder
-	w := bufio.NewWriter(&stringWriter{b: &buf})
+	w := bufio.NewWriter(&buf)
 	final := pumpStreamEvents(w, ch)
 	require.Equal(t, "hello there", final)
 }
@@ -38,7 +38,7 @@ func TestPumpStreamEvents_channelCloseWithoutDone(t *testing.T) {
 	close(ch)
 
 	var buf strings.Builder
-	w := bufio.NewWriter(&stringWriter{b: &buf})
+	w := bufio.NewWriter(&buf)
 	final := pumpStreamEvents(w, ch)
 	require.Equal(t, "partial", final)
 }
@@ -72,7 +72,7 @@ func TestPumpStreamEvents_terminalErrorYieldsErrorEvent(t *testing.T) {
 	close(ch)
 
 	var buf strings.Builder
-	w := bufio.NewWriter(&stringWriter{b: &buf})
+	w := bufio.NewWriter(&buf)
 	final := pumpStreamEvents(w, ch)
 	require.Empty(t, final)
 	out := buf.String()
@@ -94,9 +94,3 @@ func (f *failingWriter) Write(p []byte) (int, error) {
 	}
 	return len(p), nil
 }
-
-// stringWriter is the simplest possible io.Writer for capturing SSE
-// output in unit tests.
-type stringWriter struct{ b *strings.Builder }
-
-func (s *stringWriter) Write(p []byte) (int, error) { return s.b.Write(p) }
