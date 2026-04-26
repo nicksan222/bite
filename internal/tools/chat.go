@@ -12,8 +12,9 @@ func init() {
 		Summary: "Open the interactive chat TUI.",
 		Description: `Open the interactive chat TUI.
 
-By default a fresh conversation is created. Use --resume <id> to continue an
-existing one (see "bite conversations_list" for ids).
+By default a fresh conversation is created. Pass --resume <id> to continue a
+saved conversation; conversation IDs are surfaced by other tools ("bite --help"
+lists everything).
 
 Inside chat, type /<name> to invoke any registered tool directly (deterministic,
 no model call). Type /help to list every available slash command.`,
@@ -28,7 +29,7 @@ no model call). Type /help to list every available slash command.`,
 		},
 		Params: []Param{
 			{Name: "resume", Type: ParamInt,
-				Desc: "Resume an existing conversation by id (see bite conversations_list)."},
+				Desc: "Resume an existing conversation by id."},
 		},
 		Run: runChat,
 	})
