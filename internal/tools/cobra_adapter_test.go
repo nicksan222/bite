@@ -122,6 +122,28 @@ func TestRegisterCobra_flagParam(t *testing.T) {
 	})
 }
 
+func TestRegisterCobra_requiredFlag_enforcesPresence(t *testing.T) {
+	withCleanRegistry(t, func() {
+		Register(Tool{
+			Name: "needs_flag", Summary: "s", Description: "d",
+			Params: []Param{{Name: "kcal", Type: ParamFloat, Required: true}},
+			Run: func(_ context.Context, _ Deps, _ Args) (Result, error) {
+				return Result{Text: "ok"}, nil
+			},
+		})
+		root := &cobra.Command{Use: "test"}
+		RegisterCobra(root, StaticDeps(Deps{}))
+
+		// Missing the required flag must error rather than silently use 0.
+		_, err := runCmd(t, root, "needs_flag")
+		require.Error(t, err)
+
+		// Supplying it succeeds.
+		_, err = runCmd(t, root, "needs_flag", "--kcal=2000")
+		require.NoError(t, err)
+	})
+}
+
 func TestRegisterCobra_unchangedFlagAbsent(t *testing.T) {
 	withCleanRegistry(t, func() {
 		var seen Args
