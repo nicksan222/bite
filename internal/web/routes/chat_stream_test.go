@@ -279,7 +279,9 @@ func runChatTurn(t *testing.T, app *fiber.App, cookie *http.Cookie, message stri
 	return cookie
 }
 
-// extractTurnID pulls the 32-char hex turn ID out of an HTML response.
+// turnIDPattern matches the SSE-stream URL htmx writes into the
+// assistant bubble's sse-connect attribute, capturing the 32-char hex
+// turn ID. Compiled once at package init.
 var turnIDPattern = regexp.MustCompile(chatStreamPathPrefix + `([0-9a-f]{32})`)
 
 // requireSSEErrorAndDone asserts the body carries an SSE error event
@@ -296,6 +298,9 @@ func requireSSEErrorAndDone(t *testing.T, body, dataSubstr string) {
 		"every error path must terminate with a done event so the EventSource closes cleanly")
 }
 
+// extractTurnID pulls the 32-char hex turn ID out of an HTML response
+// from POST /api/chat. Tests use this to drive the follow-up SSE GET
+// without faking the URL — keeps them couplied to the real wire shape.
 func extractTurnID(t *testing.T, body string) string {
 	t.Helper()
 	m := turnIDPattern.FindStringSubmatch(body)
