@@ -120,6 +120,14 @@ simpler — call `Run(ctx)` directly.
 - `DescribeDynamic func() string` — return the long-form help text computed
   at registration time, after every `init()` has run. Use this when the help
   must reflect current registry state (e.g. `doctor` lists every Check).
+- `Examples []Example` — `bite <tool> --help` and `bite --help` both build
+  their example blocks from this. Cmd must start with `bite <tool-name>`
+  (validated at registration); Desc must be non-empty.
+- `Param.Default` — the canonical fallback value when the user omits the
+  param. Adapters inject it via `NewArgsForTool`, so a tool's `Run` can call
+  `args.Int("limit")` and trust the declared default — no per-tool
+  `if v == 0 { v = N }` boilerplate. Param.Default is mutually exclusive
+  with `Required` (a default makes the param optional).
 - `Deps.StreamWriter` — write progressive output here for tools that stream
   (e.g. `ask`). The cobra adapter wires it to stdout; AI/slash leave it nil.
 
