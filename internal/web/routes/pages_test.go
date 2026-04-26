@@ -122,6 +122,26 @@ func TestPages_htmxConfigEnables4xxSwap(t *testing.T) {
 	require.True(t, got4xx, "the [45].. rule must have swap:true so error alerts surface")
 }
 
+// TestPages_chatFormWiring locks in the chat page's load-bearing
+// htmx attributes: the form must post to /api/chat, target the
+// transcript with beforeend swap, and the page must load
+// htmx-ext-sse so the asst bubble's sse-connect can drive the stream.
+func TestPages_chatFormWiring(t *testing.T) {
+	app := newApp(Deps{})
+	resp, err := app.Test(httptest.NewRequest(http.MethodGet, "/", nil))
+	require.NoError(t, err)
+	body, _ := io.ReadAll(resp.Body)
+	got := string(body)
+	require.Contains(t, got, `hx-post="/api/chat"`,
+		"chat form must post to /api/chat")
+	require.Contains(t, got, `hx-target="#chat-transcript"`,
+		"chat form must target the transcript so bubbles append into it")
+	require.Contains(t, got, `hx-swap="beforeend"`,
+		"chat form must append (not replace) so prior turns survive")
+	require.Contains(t, got, `/static/htmx-ext-sse.min.js`,
+		"chat page must load the SSE extension or sse-connect won't work")
+}
+
 // TestPages_mealsFormWiring locks in the load-bearing attributes on
 // the meals page log-form: it must hx-post to /htmx/tool/log_meal,
 // reset on success, and dispatch a body-level "refresh" event so the
