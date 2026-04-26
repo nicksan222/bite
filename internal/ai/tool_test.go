@@ -146,6 +146,42 @@ func TestPumpWithTools_noToolCalls_directText(t *testing.T) {
 	assert.Equal(t, "eat more vegetables", final)
 }
 
+func TestPumpWithTools_emitsToolStepEvents(t *testing.T) {
+	tools := map[string]Tool{
+		"log_meal": {Execute: func(_ context.Context, args string) (string, error) {
+			return "logged: " + args, nil
+		}},
+	}
+	m := &callableModel{responses: []callResponse{
+		{chunks: []*schema.Message{{
+			Role: schema.Assistant,
+			ToolCalls: []schema.ToolCall{{
+				ID: "abc123", Type: "function",
+				Function: schema.FunctionCall{Name: "log_meal", Arguments: `{"food":"pasta"}`},
+			}},
+		}}},
+		{chunks: []*schema.Message{{Content: "ok"}}},
+	}}
+
+	out := make(chan StreamEvent, 16)
+	pumpWithTools(context.Background(), m, nil, tools, out)
+
+	var steps []ToolStep
+	for ev := range out {
+		if ev.ToolStep != nil {
+			steps = append(steps, *ev.ToolStep)
+		}
+	}
+	require.Len(t, steps, 2, "expected one start + one finish event")
+	assert.Equal(t, "abc123", steps[0].ID)
+	assert.Equal(t, "log_meal", steps[0].Name)
+	assert.False(t, steps[0].Finished, "first step should be the start event")
+	assert.Empty(t, steps[0].Result)
+	assert.True(t, steps[1].Finished, "second step should be the finish event")
+	assert.Equal(t, `logged: {"food":"pasta"}`, steps[1].Result)
+	assert.Equal(t, steps[0].ID, steps[1].ID, "matching ID lets UIs update in place")
+}
+
 func TestPumpWithTools_singleToolCall_thenText(t *testing.T) {
 	callCount := 0
 	tools := map[string]Tool{

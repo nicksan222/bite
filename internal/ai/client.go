@@ -72,12 +72,28 @@ func NewClient(ctx context.Context, cfg ClientConfig) (*Client, error) {
 }
 
 // StreamEvent is one chunk delivered while a response is being generated.
-// Exactly one of Delta, Err, or Done is set.
+// Exactly one of Delta, Err, Done, or ToolStep is set.
 type StreamEvent struct {
 	Delta string
 	Err   error
 	Done  bool
 	Final string
+	// ToolStep is set when the model calls a tool. UIs can render these as
+	// "thinking" steps so the user sees what the model is doing between
+	// the input and the final answer.
+	ToolStep *ToolStep
+}
+
+// ToolStep describes a tool-call lifecycle event observed during streaming.
+// One Started event is emitted as soon as the model requests a tool, then
+// one Finished event after the tool returns. Both carry the same ID so UIs
+// can update an in-place row instead of stacking duplicates.
+type ToolStep struct {
+	ID        string
+	Name      string
+	Arguments string // raw JSON args as supplied by the model
+	Result    string // populated only when Finished is true
+	Finished  bool
 }
 
 // streamOpts is the internal state built up by StreamOption values.

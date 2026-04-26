@@ -73,7 +73,23 @@ func pumpWithTools(ctx context.Context, m model.ToolCallingChatModel, msgs []*sc
 
 		msgs = append(msgs, final)
 		for _, tc := range final.ToolCalls {
+			if !sendStep(ctx, out, &ToolStep{
+				ID:        tc.ID,
+				Name:      tc.Function.Name,
+				Arguments: tc.Function.Arguments,
+			}) {
+				return
+			}
 			result := executeTool(ctx, tools, tc)
+			if !sendStep(ctx, out, &ToolStep{
+				ID:        tc.ID,
+				Name:      tc.Function.Name,
+				Arguments: tc.Function.Arguments,
+				Result:    result,
+				Finished:  true,
+			}) {
+				return
+			}
 			msgs = append(msgs, &schema.Message{
 				Role:       schema.Tool,
 				Content:    result,
@@ -137,5 +153,16 @@ func sendErr(ctx context.Context, out chan<- StreamEvent, err error) {
 	select {
 	case out <- StreamEvent{Err: err}:
 	case <-ctx.Done():
+	}
+}
+
+// sendStep delivers a ToolStep event, returning false if the context was
+// cancelled (so the caller can abort the loop instead of blocking forever).
+func sendStep(ctx context.Context, out chan<- StreamEvent, step *ToolStep) bool {
+	select {
+	case out <- StreamEvent{ToolStep: step}:
+		return true
+	case <-ctx.Done():
+		return false
 	}
 }
