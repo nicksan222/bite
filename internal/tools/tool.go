@@ -19,6 +19,14 @@ const (
 
 // Param is one input parameter of a tool. The same Param is used to generate
 // the AI JSON-schema, the cobra flag/positional, and the slash-command parser.
+//
+// Default's Go type must match Type (validated at registration). When Default
+// is set and the user omits the param, NewArgsForTool injects the default
+// into Args before Run is called — Tool.Run code can call args.Int(name)
+// without a manual `if v == 0 { v = N }` fallback.
+//
+// Required and Default are mutually exclusive: a default makes the param
+// optional by definition.
 type Param struct {
 	Name       string
 	Type       ParamType
@@ -28,9 +36,11 @@ type Param struct {
 	Default    any
 }
 
-// Result is what a tool returns. Text is required; Table is an optional
-// structured render that adapters lay out per surface (tabwriter for cobra,
-// Markdown table for AI/TUI).
+// Result is what a tool returns. Set Text for plain output, Table for a
+// structured render (laid out per surface: tabwriter for cobra, Markdown
+// table for AI/TUI), or both — they render in order. Returning a zero
+// Result is valid for tools that streamed everything via Deps.StreamWriter
+// (the cobra adapter detects the stream and skips the duplicate text).
 type Result struct {
 	Text  string
 	Table *Table
@@ -62,10 +72,11 @@ type Tool struct {
 	// reports eating something — even casually."). Falls back to Description
 	// if empty.
 	Prompt string
-	// Examples are short, copy-pasteable usage lines that surface in
-	// `bite --help`. When non-empty, the rootCmd's example block is built
-	// from the registry — adding a tool with an Example makes it discoverable
-	// without editing cli/root.go.
+	// Examples are short, copy-pasteable usage lines that surface in BOTH
+	// `bite --help` (merged across all tools) and `bite <tool> --help`
+	// (just this tool's). Adding a tool with an Example makes it discoverable
+	// without editing cli/root.go. Cmd must start with `bite <tool-name>`
+	// (validated at registration); Desc must be non-empty.
 	Examples []Example
 	Params   []Param
 	Run      func(ctx context.Context, deps Deps, args Args) (Result, error)
