@@ -46,6 +46,7 @@ func TestAPI_listTools(t *testing.T) {
 	resp, err := app.Test(httptest.NewRequest(http.MethodGet, "/api/tools", nil))
 	require.NoError(t, err)
 	require.Equal(t, http.StatusOK, resp.StatusCode)
+	require.Contains(t, resp.Header.Get("Content-Type"), "application/json")
 
 	var body struct {
 		Tools []ToolMeta `json:"tools"`
@@ -53,6 +54,8 @@ func TestAPI_listTools(t *testing.T) {
 	require.NoError(t, json.NewDecoder(resp.Body).Decode(&body))
 	require.Len(t, body.Tools, 1)
 	require.Equal(t, "echo", body.Tools[0].Name)
+	require.Equal(t, "echo back", body.Tools[0].Summary,
+		"summary must round-trip — without this assertion the JSON shape could lose fields silently")
 }
 
 func TestAPI_invokeTool_success(t *testing.T) {
