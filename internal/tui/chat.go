@@ -213,14 +213,8 @@ func (m model) View() string {
 // ─── helpers ─────────────────────────────────────────────────────────────────
 
 func (m *model) layout() {
-	w := m.width
-	if w < 20 {
-		w = 20
-	}
-	h := m.height - 9 // header + input box + status + padding
-	if h < 5 {
-		h = 5
-	}
+	w := max(m.width, 20)
+	h := max(m.height-9, 5) // header + input box + status + padding
 
 	m.input.SetWidth(w - 4)
 	m.viewport.Width = w
@@ -358,6 +352,6 @@ func welcomeText() string {
 	return strings.Join([]string{
 		assistantStyle.Render("bite"),
 		"  your terminal nutritionist. log a meal, ask about calories, or just chat.",
-		"  Enter to send · Ctrl+C to quit",
+		"  Enter to send · /help for slash commands · Ctrl+C to quit",
 	}, "\n")
 }
