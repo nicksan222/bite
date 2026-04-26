@@ -15,7 +15,8 @@ import (
 )
 
 // Persister is the minimum surface the TUI needs from the store layer.
-// Implemented by *db.Store via small adapter methods (see cli/chat.go).
+// Satisfied by tools.ChatPersister so tui never grows direct database
+// knowledge.
 type Persister interface {
 	AppendUser(ctx context.Context, content string) error
 	AppendAssistant(ctx context.Context, content string) error
