@@ -16,7 +16,8 @@
         {{if .Params}}
         <div class="flex flex-wrap gap-2">
           {{range .Params}}
-          <span class="badge font-mono {{if .Required}}badge-warning{{else}}badge-outline{{end}}">
+          <span class="badge font-mono {{if .Required}}badge-warning{{else}}badge-outline{{end}}"
+                title="{{if .Required}}required{{else}}optional{{end}} {{.Type}}">
             {{.Name}}<span class="opacity-60">:{{.Type}}</span>
           </span>
           {{end}}
