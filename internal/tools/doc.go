@@ -7,11 +7,12 @@
 // registries to every surface of the application:
 //
 //   - AITools(deps)         — Claude tool spec for ai.WithTools
+//   - ChatStreamOptions     — `ai.WithTools(AITools(deps))` packaged for callers
 //   - RegisterCobra         — auto-generated cobra subcommands (one per Tool)
-//   - Dispatch              — slash-command parser for the TUI
+//   - NewSlashHandler       — TUI slash dispatcher (calls Dispatch under the hood)
 //   - RenderAppendix        — "Available tools" block appended to the system prompt
-//   - Checks                — full Check list iterated by the doctor tool
 //   - BuildSystemPrompt     — assembles persona + appendix in one step
+//   - Checks                — full Check list iterated by the doctor tool
 //   - LoadConfig / OpenStore / OpenAIClient / CobraDepsProvider — wiring helpers
 //
 // To add a tool: drop a file in this package with an init() that calls
