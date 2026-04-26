@@ -135,7 +135,7 @@ func TestHTMX_postForm(t *testing.T) {
 	app := newApp(Deps{
 		InvokeTool: func(_ context.Context, _ string, raw map[string]any) (Result, error) {
 			captured = raw
-			return Result{Text: "ok"}, nil
+			return Result{Text: "logged"}, nil
 		},
 	})
 	req := httptest.NewRequest(http.MethodPost, "/htmx/tool/log_meal",
@@ -146,4 +146,7 @@ func TestHTMX_postForm(t *testing.T) {
 	require.Equal(t, http.StatusOK, resp.StatusCode)
 	require.Equal(t, "salad", captured["title"])
 	require.Equal(t, "300", captured["kcal"], "form values arrive as strings; the registry adapter coerces upstream")
+	body, _ := io.ReadAll(resp.Body)
+	require.Contains(t, string(body), "logged",
+		"rendered fragment must echo the tool's Result.Text — the meals page hx-target depends on this")
 }
