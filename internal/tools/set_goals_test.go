@@ -47,6 +47,26 @@ func TestSetGoals_omitPreservesExisting(t *testing.T) {
 	assert.Equal(t, 150.0, *g.ProteinG)
 }
 
+func TestMergeGoal_absentKeepsCurrent(t *testing.T) {
+	cur := 1800.0
+	got := mergeGoal(NewArgs(nil), "kcal", &cur)
+	require.NotNil(t, got)
+	assert.Equal(t, 1800.0, *got)
+}
+
+func TestMergeGoal_zeroClears(t *testing.T) {
+	cur := 1800.0
+	got := mergeGoal(NewArgs(map[string]any{"kcal": 0.0}), "kcal", &cur)
+	assert.Nil(t, got, "explicit zero must clear")
+}
+
+func TestMergeGoal_nonZeroOverrides(t *testing.T) {
+	cur := 1800.0
+	got := mergeGoal(NewArgs(map[string]any{"kcal": 2200.0}), "kcal", &cur)
+	require.NotNil(t, got)
+	assert.Equal(t, 2200.0, *got)
+}
+
 func TestSetGoals_storeErrorOnLoad(t *testing.T) {
 	ctx := context.Background()
 	deps := freshDeps(t)
