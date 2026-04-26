@@ -5,7 +5,6 @@ import (
 
 	"github.com/spf13/cobra"
 
-	"github.com/nicksan222/bite/internal/ai"
 	"github.com/nicksan222/bite/internal/tools"
 	"github.com/nicksan222/bite/internal/tui"
 )
@@ -55,9 +54,9 @@ func runChat(ctx context.Context, resumeID int64) error {
 	}
 
 	deps := tools.Deps{Store: store, AI: client, OpenAIAPIKey: cfg.OpenAIAPIKey}
-	streamOpts := []ai.StreamOption{ai.WithTools(tools.AITools(deps))}
 	persist := tools.NewChatPersister(store, convID, len(history) > 0)
-	prog := tui.New(ctx, client, persist, history, streamOpts,
+	prog := tui.New(ctx, client, persist, history,
+		tools.ChatStreamOptions(deps),
 		tui.WithSlashHandler(tools.NewSlashHandler(deps)))
 	_, err = prog.Run()
 	return err

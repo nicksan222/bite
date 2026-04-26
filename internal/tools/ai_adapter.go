@@ -22,6 +22,14 @@ func AITools(deps Deps) []ai.Tool {
 	return out
 }
 
+// ChatStreamOptions assembles the StreamOptions every chat-style entry
+// point needs: the registered tool spec bound via ai.WithTools. Future
+// surfaces (REST mode, daemon, etc.) should call this so they can't forget
+// the registry-binding step.
+func ChatStreamOptions(deps Deps) []ai.StreamOption {
+	return []ai.StreamOption{ai.WithTools(AITools(deps))}
+}
+
 func toAITool(t Tool, deps Deps) ai.Tool {
 	return ai.Tool{
 		Name:        t.Name,
