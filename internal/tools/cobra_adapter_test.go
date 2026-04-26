@@ -342,6 +342,27 @@ func TestParseString_invalidValues(t *testing.T) {
 	assert.Error(t, err)
 }
 
+func TestRegisterCobra_intDefaultAcceptsPlainInt(t *testing.T) {
+	// validateDefault accepts both `int` and `int64` for ParamInt; bindFlags
+	// must coerce a plain `int` literal correctly.
+	withCleanRegistry(t, func() {
+		var seen Args
+		Register(Tool{
+			Name: "int_default", Summary: "s", Description: "d",
+			Params: []Param{{Name: "n", Type: ParamInt, Default: 7}},
+			Run: func(_ context.Context, _ Deps, a Args) (Result, error) {
+				seen = a
+				return Result{Text: "ok"}, nil
+			},
+		})
+		root := &cobra.Command{Use: "test"}
+		RegisterCobra(root, StaticDeps(Deps{}))
+		_, err := runCmd(t, root, "int_default", "--n=42")
+		require.NoError(t, err)
+		assert.Equal(t, int64(42), seen.Int("n"))
+	})
+}
+
 func TestRegisterCobra_bindsAllFlagTypes(t *testing.T) {
 	withCleanRegistry(t, func() {
 		var seen Args
