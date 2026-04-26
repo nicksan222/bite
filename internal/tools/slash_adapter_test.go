@@ -148,6 +148,31 @@ func TestTokeniseSlash_unterminatedQuote(t *testing.T) {
 	assert.Error(t, err)
 }
 
+func TestDispatch_unterminatedQuoteSurfacesParseError(t *testing.T) {
+	withCleanRegistry(t, func() {
+		Register(noopTool("alpha"))
+		out := Dispatch(context.Background(), Deps{}, `/alpha "unterminated`)
+		require.Error(t, out.ParseError)
+	})
+}
+
+func TestDispatch_repeatedKeyAppendsToList(t *testing.T) {
+	withCleanRegistry(t, func() {
+		var seen Args
+		Register(Tool{
+			Name: "many", Summary: "s", Description: "d",
+			Params: []Param{{Name: "tag", Type: ParamStringList}},
+			Run: func(_ context.Context, _ Deps, a Args) (Result, error) {
+				seen = a
+				return Result{Text: "ok"}, nil
+			},
+		})
+		out := Dispatch(context.Background(), Deps{}, "/many tag=red tag=blue")
+		require.NoError(t, out.ParseError)
+		assert.Equal(t, []string{"red", "blue"}, seen.StringList("tag"))
+	})
+}
+
 func TestIsKeyValue(t *testing.T) {
 	assert.True(t, isKeyValue("kcal=2000"))
 	assert.True(t, isKeyValue("protein-g=150"))

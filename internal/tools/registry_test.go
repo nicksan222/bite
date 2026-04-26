@@ -150,6 +150,35 @@ func TestArgs_accessors(t *testing.T) {
 	assert.Equal(t, []string{"a", "b"}, a.StringList("sl"))
 }
 
+func TestArgs_StringList_acceptsNativeSlice(t *testing.T) {
+	// AI/JSON inputs arrive as []any, but cobra's StringArray flags hand us
+	// a real []string. Both must round-trip identically.
+	a := NewArgs(map[string]any{"xs": []string{"a", "b"}})
+	assert.Equal(t, []string{"a", "b"}, a.StringList("xs"))
+}
+
+func TestArgs_StringList_filtersWrongTypes(t *testing.T) {
+	// Stray non-string entries (e.g. JSON number in a list-of-strings) get
+	// dropped rather than panic the tool.
+	a := NewArgs(map[string]any{"xs": []any{"a", 42, "b"}})
+	assert.Equal(t, []string{"a", "b"}, a.StringList("xs"))
+}
+
+func TestArgs_typeMismatchReturnsZero(t *testing.T) {
+	a := NewArgs(map[string]any{
+		"s": 42,         // not a string
+		"i": "no",       // not a number
+		"f": "no",       // not a number
+		"b": "no",       // not a bool
+		"x": struct{}{}, // not a list
+	})
+	assert.Equal(t, "", a.String("s"))
+	assert.Equal(t, int64(0), a.Int("i"))
+	assert.Equal(t, 0.0, a.Float("f"))
+	assert.False(t, a.Bool("b"))
+	assert.Nil(t, a.StringList("x"))
+}
+
 func TestArgs_zeroOnMissing(t *testing.T) {
 	a := NewArgs(nil)
 	assert.Equal(t, "", a.String("x"))

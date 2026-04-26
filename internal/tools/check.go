@@ -13,13 +13,12 @@ type Severity int
 
 const (
 	SeverityHard Severity = iota
-	SeverityRoot
 	SeveritySoft
 )
 
 func (s Severity) String() string {
 	switch s {
-	case SeverityHard, SeverityRoot:
+	case SeverityHard:
 		return "hard"
 	case SeveritySoft:
 		return "soft"
