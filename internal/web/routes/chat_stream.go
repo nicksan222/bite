@@ -132,9 +132,10 @@ func buildChatHistory(req chatRequest) ([]ai.Message, error) {
 // Anything else — empty, "system", a typo — is rejected up front so it
 // never reaches the model.
 func parseChatRole(s string) (ai.Role, error) {
-	switch ai.Role(s) {
+	role := ai.Role(s)
+	switch role {
 	case ai.RoleUser, ai.RoleAssistant:
-		return ai.Role(s), nil
+		return role, nil
 	default:
 		return "", fmt.Errorf("invalid role %q (want user or assistant)", s)
 	}
