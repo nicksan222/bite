@@ -61,7 +61,12 @@ func formArgs(c fiber.Ctx) map[string]string {
 	return out
 }
 
-// pageData is the layout's expected shape. Pages embed it and add their
+// pageData is the layout's expected shape. Title fills the <title> tag
+// (and any layout copy that refers to it); Active controls the
+// highlighted nav link in layout.html and must match one of the keys
+// the layout's {{if eq .Active "…"}} branches against.
+//
+// Pages with extra payload (cards, lists) embed pageData and add their
 // own fields via composition.
 type pageData struct {
 	Title  string
