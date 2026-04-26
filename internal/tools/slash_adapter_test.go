@@ -143,6 +143,19 @@ func TestDispatch_missingRequired(t *testing.T) {
 	})
 }
 
+func TestDispatch_tooManyPositionals(t *testing.T) {
+	withCleanRegistry(t, func() {
+		Register(Tool{
+			Name: "one_pos", Summary: "s", Description: "d",
+			Params: []Param{{Name: "x", Type: ParamString, Positional: true}},
+			Run:    noopTool("x").Run,
+		})
+		out := Dispatch(context.Background(), Deps{}, "/one_pos a b c")
+		require.Error(t, out.ParseError)
+		assert.Contains(t, out.ParseError.Error(), "too many positional")
+	})
+}
+
 func TestDispatch_positionalAfterKeyed_errors(t *testing.T) {
 	withCleanRegistry(t, func() {
 		Register(Tool{
