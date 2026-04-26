@@ -3,8 +3,9 @@ package web
 import (
 	"context"
 	"errors"
-	"fmt"
+	"net"
 	"net/http"
+	"strconv"
 	"time"
 
 	"github.com/gofiber/fiber/v3"
@@ -34,6 +35,7 @@ type Config struct {
 }
 
 // Addr returns "host:port" with the same defaults Listen would apply.
+// Uses net.JoinHostPort so an IPv6 host like "::1" is correctly bracketed.
 func (c Config) Addr() string {
 	host := c.Host
 	if host == "" {
@@ -43,7 +45,7 @@ func (c Config) Addr() string {
 	if port == 0 {
 		port = 8787
 	}
-	return fmt.Sprintf("%s:%d", host, port)
+	return net.JoinHostPort(host, strconv.Itoa(port))
 }
 
 // New builds a *Server with every route registered. It does not start

@@ -62,10 +62,13 @@ func TestNew_endToEnd(t *testing.T) {
 
 // TestConfig_Addr pins the listener defaults: zero values produce a
 // loopback-only bind, deliberately, so an operator opts in to LAN
-// exposure rather than getting it by accident.
+// exposure rather than getting it by accident. The IPv6 case proves
+// host:port assembly handles bracketed addresses correctly — a plain
+// "host:port" Sprintf would emit unparseable "::1:8787".
 func TestConfig_Addr(t *testing.T) {
 	require.Equal(t, "127.0.0.1:8787", Config{}.Addr())
 	require.Equal(t, "0.0.0.0:9000", Config{Host: "0.0.0.0", Port: 9000}.Addr())
+	require.Equal(t, "[::1]:8787", Config{Host: "::1"}.Addr())
 }
 
 // TestServer_ListenShutsDownOnCancel boots Listen on a random local port
