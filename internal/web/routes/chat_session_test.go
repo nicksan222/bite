@@ -54,6 +54,29 @@ func TestSessionStore_appendTurn_refreshesLastTouched(t *testing.T) {
 		"appendTurn must refresh last so the just-completed turn isn't pruned next")
 }
 
+// TestSessionStore_ensure_prunesIdleEntries pins that prune runs as
+// part of every ensure call. Without prune in the request path,
+// sessions would only be evicted if pruneLocked were called by some
+// other code path — making leaks possible if traffic patterns change.
+func TestSessionStore_ensure_prunesIdleEntries(t *testing.T) {
+	app := newApp(Deps{AI: &stubStreamer{}})
+	// Plant a stale session in the global store and submit a request
+	// through ensure. The stale entry should disappear; the request's
+	// own session should appear.
+	chatSessionStore.mu.Lock()
+	chatSessionStore.sessions["stale-id"] = &chatSession{last: time.Now().Add(-2 * chatSessionTTL)}
+	chatSessionStore.mu.Unlock()
+
+	resp, err := app.Test(postForm("/api/chat", map[string]string{"message": "hi"}))
+	require.NoError(t, err)
+	require.Equal(t, http.StatusOK, resp.StatusCode)
+
+	chatSessionStore.mu.Lock()
+	defer chatSessionStore.mu.Unlock()
+	require.NotContains(t, chatSessionStore.sessions, "stale-id",
+		"ensure must call pruneLocked so idle sessions don't leak")
+}
+
 // TestSessionStore_pruneEvictsIdle proves pruneLocked actually removes
 // entries past the TTL — without this, sessions would leak forever.
 func TestSessionStore_pruneEvictsIdle(t *testing.T) {
