@@ -18,7 +18,10 @@ with --image (repeatable, local paths or http(s) URLs).`,
 		Prompt: `Use ask sparingly — it bypasses chat memory and tools. Prefer normal chat
 turns for anything that needs context, tool calls, or follow-ups.`,
 		Params: []Param{
-			{Name: "prompt", Type: ParamString, Required: true, Positional: true,
+			// prompt is positional but NOT Required: an image-only invocation
+			// ("bite ask --image meal.jpg") is valid; runAsk rejects the case
+			// where both prompt and image are absent.
+			{Name: "prompt", Type: ParamString, Positional: true,
 				Desc: "The question or instruction to send."},
 			{Name: "image", Type: ParamStringList,
 				Desc: "Image to attach (path or http(s) URL). Repeat for multiple."},
