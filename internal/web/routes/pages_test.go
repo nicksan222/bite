@@ -13,10 +13,12 @@ import (
 )
 
 // TestPages_render exercises every server-rendered page: each must
-// resolve to 200 with text/html and a body that includes the page's
-// title (proves the layout wrapped the content template, not just
-// served the layout). Asserts only the title — CSS classes are
-// implementation details that would couple the test to template syntax.
+// resolve to 200 with text/html, a body that includes the page's
+// title (proves the layout wrapped the content), and a page-specific
+// piece of copy (proves the content template actually rendered — a
+// regression that produces an empty content block would still pass a
+// title-only check). Asserts copy text rather than CSS classes so the
+// test isn't coupled to template syntax.
 func TestPages_render(t *testing.T) {
 	app := newApp(Deps{
 		ListTools: func() []ToolMeta {
@@ -24,13 +26,14 @@ func TestPages_render(t *testing.T) {
 		},
 	})
 	cases := []struct {
-		path  string
-		title string
+		path        string
+		title       string
+		contentCopy string
 	}{
-		{"/", "Chat"},
-		{"/dashboard", "Dashboard"},
-		{"/meals", "Meals"},
-		{"/tools", "Tools"},
+		{"/", "Chat", "What's on your plate?"},
+		{"/dashboard", "Dashboard", "Live snapshots"},
+		{"/meals", "Meals", "Log a meal"},
+		{"/tools", "Tools", "Tool registry"},
 	}
 	for _, c := range cases {
 		t.Run(c.path, func(t *testing.T) {
@@ -39,7 +42,10 @@ func TestPages_render(t *testing.T) {
 			require.Equal(t, http.StatusOK, resp.StatusCode)
 			require.Equal(t, "text/html; charset=utf-8", resp.Header.Get("Content-Type"))
 			body, _ := io.ReadAll(resp.Body)
-			require.Contains(t, string(body), "<title>bite — "+c.title+"</title>")
+			got := string(body)
+			require.Contains(t, got, "<title>bite — "+c.title+"</title>")
+			require.Contains(t, got, c.contentCopy,
+				"page-specific copy missing — content block did not render")
 		})
 	}
 }
