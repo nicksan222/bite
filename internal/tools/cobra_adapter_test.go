@@ -333,6 +333,14 @@ func TestParseString_allTypes(t *testing.T) {
 	assert.Equal(t, []string{"x"}, v)
 }
 
+func TestParseString_unknownTypeFails(t *testing.T) {
+	// The default branch is defensive — it fires only if a Param.Type
+	// outside the iota range is passed (impossible via the public API,
+	// but the guard exists so we lock its behaviour in.)
+	_, err := parseString(ParamType(999), "anything")
+	require.Error(t, err)
+}
+
 func TestParseString_invalidValues(t *testing.T) {
 	_, err := parseString(ParamInt, "abc")
 	assert.Error(t, err)
