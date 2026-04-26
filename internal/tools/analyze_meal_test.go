@@ -56,6 +56,20 @@ func TestAnalyzeMeal_noAIClient(t *testing.T) {
 	require.Error(t, err)
 }
 
+func TestAnalyzeMeal_aiStreamError(t *testing.T) {
+	// When the underlying AnalyzeMeal call errors (model returns bad JSON,
+	// network blip, etc.), analyzeFromArgs wraps it. Drive the failure with
+	// a stub that returns non-JSON.
+	ctx := context.Background()
+	deps := freshDeps(t)
+	deps.AI = stubAI{resp: "not json at all"}
+
+	_, err := MustGet("analyze_meal").Run(ctx, deps, NewArgs(map[string]any{
+		"text": "x",
+	}))
+	require.Error(t, err)
+}
+
 func TestAnalyzeMeal_routesURLsAndPaths(t *testing.T) {
 	// analyzeFromArgs splits the file list into MediaURLs (http/https) vs
 	// MediaPaths (everything else). Verify both branches are reachable.
