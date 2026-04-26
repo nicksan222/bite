@@ -121,6 +121,28 @@ func TestDoctor_pingGateRunsCheck(t *testing.T) {
 	}
 }
 
+func TestGateParams_dedupesSharedGate(t *testing.T) {
+	// Two checks sharing the same Gate name must produce exactly one
+	// --<gate> flag, not two duplicates.
+	snapshotCheckRegistry(t)
+	RegisterCheck(Check{
+		Name: "alpha", Severity: SeverityHard, Gate: "shared",
+		Run: func(_ context.Context) (string, error) { return "", nil },
+	})
+	RegisterCheck(Check{
+		Name: "beta", Severity: SeverityHard, Gate: "shared",
+		Run: func(_ context.Context) (string, error) { return "", nil },
+	})
+
+	count := 0
+	for _, p := range gateParams() {
+		if p.Name == "shared" {
+			count++
+		}
+	}
+	assert.Equal(t, 1, count, "shared gate should produce exactly one Param")
+}
+
 func TestGateParams_includesEveryDistinctGate(t *testing.T) {
 	// Doctor's Params must include a Bool flag for every distinct gate
 	// declared by registered checks, so adding a gated check extends
