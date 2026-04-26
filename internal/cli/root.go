@@ -46,7 +46,7 @@ for environment health checks.`,
 	SilenceUsage:  true,
 	SilenceErrors: true,
 	RunE: func(cmd *cobra.Command, _ []string) error {
-		return runChat(cmd.Context(), 0)
+		return tools.RunChatTUI(cmd.Context(), 0)
 	},
 }
 

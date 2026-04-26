@@ -9,7 +9,41 @@ import (
 
 	"github.com/nicksan222/bite/internal/ai"
 	"github.com/nicksan222/bite/internal/db"
+	"github.com/nicksan222/bite/internal/tui"
 )
+
+// RunChatTUI is the full chat-launch flow: load config, open store, build the
+// AI client, prepare a session (fresh or resumed), wire the registry into
+// stream options + slash dispatch, and run the bubbletea program. Centralised
+// here so cli/chat.go (and any future entry point — daemon, REST mode, …)
+// stay thin one-line callers.
+func RunChatTUI(ctx context.Context, resumeID int64) error {
+	cfg, err := LoadConfig()
+	if err != nil {
+		return err
+	}
+	store, err := OpenStore(ctx, cfg)
+	if err != nil {
+		return err
+	}
+	defer store.Close()
+	client, err := OpenAIClient(ctx, cfg)
+	if err != nil {
+		return err
+	}
+	convID, history, err := PrepareSession(ctx, store, cfg.Model, resumeID)
+	if err != nil {
+		return err
+	}
+
+	deps := Deps{Store: store, AI: client, OpenAIAPIKey: cfg.OpenAIAPIKey}
+	persist := NewChatPersister(store, convID, len(history) > 0)
+	prog := tui.New(ctx, client, persist, history,
+		ChatStreamOptions(deps),
+		tui.WithSlashHandler(NewSlashHandler(deps)))
+	_, err = prog.Run()
+	return err
+}
 
 // PrepareSession resumes an existing conversation when resumeID > 0, otherwise
 // creates a fresh one. Returns the conversation ID and any prior history.
