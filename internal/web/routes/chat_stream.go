@@ -145,15 +145,12 @@ func pumpStreamEvents(w *bufio.Writer, events <-chan ai.StreamEvent) string {
 
 // writeSSE emits one Server-Sent Event with plain-text body. Multi-line
 // bodies are split into separate `data:` lines so a token containing a
-// newline still parses on the client.
+// newline still parses on the client. Empty bodies emit a single
+// `data: ` line, which the SSE spec accepts as zero-length data.
 func writeSSE(w *bufio.Writer, event, body string) {
 	fmt.Fprintf(w, "event: %s\n", event)
-	if body == "" {
-		fmt.Fprint(w, "data:\n")
-	} else {
-		for _, line := range strings.Split(body, "\n") {
-			fmt.Fprintf(w, "data: %s\n", line)
-		}
+	for _, line := range strings.Split(body, "\n") {
+		fmt.Fprintf(w, "data: %s\n", line)
 	}
 	fmt.Fprint(w, "\n")
 }
