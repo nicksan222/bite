@@ -24,6 +24,27 @@ func (s stubAI) Stream(_ context.Context, _ []ai.Message, _ ...ai.StreamOption) 
 	return ch, nil
 }
 
+// errStreamer surfaces an error from Stream() before any events fire.
+type errStreamer struct{ err error }
+
+func (s errStreamer) Stream(_ context.Context, _ []ai.Message, _ ...ai.StreamOption) (<-chan ai.StreamEvent, error) {
+	return nil, s.err
+}
+
+// eventStreamer emits the supplied events in order, then closes. Lets tests
+// drive specific stream-event sequences (mid-stream errors, Done-only, etc.)
+// deterministically.
+type eventStreamer struct{ events []ai.StreamEvent }
+
+func (s eventStreamer) Stream(_ context.Context, _ []ai.Message, _ ...ai.StreamOption) (<-chan ai.StreamEvent, error) {
+	ch := make(chan ai.StreamEvent, len(s.events))
+	for _, ev := range s.events {
+		ch <- ev
+	}
+	close(ch)
+	return ch, nil
+}
+
 // freshDeps spins up a fresh in-memory SQLite store, fixed clock, and UTC loc.
 // The store is closed via t.Cleanup.
 func freshDeps(t *testing.T) Deps {

@@ -55,26 +55,6 @@ func TestAsk_noAIClient(t *testing.T) {
 	require.Error(t, err)
 }
 
-// errStreamer surfaces an error from Stream() before any events fire.
-type errStreamer struct{ err error }
-
-func (s errStreamer) Stream(_ context.Context, _ []ai.Message, _ ...ai.StreamOption) (<-chan ai.StreamEvent, error) {
-	return nil, s.err
-}
-
-// eventStreamer emits the supplied events in order. Used to drive runAsk's
-// error and Done-only paths deterministically.
-type eventStreamer struct{ events []ai.StreamEvent }
-
-func (s eventStreamer) Stream(_ context.Context, _ []ai.Message, _ ...ai.StreamOption) (<-chan ai.StreamEvent, error) {
-	ch := make(chan ai.StreamEvent, len(s.events))
-	for _, ev := range s.events {
-		ch <- ev
-	}
-	close(ch)
-	return ch, nil
-}
-
 func TestAsk_streamCallError(t *testing.T) {
 	ctx := context.Background()
 	deps := freshDeps(t)
