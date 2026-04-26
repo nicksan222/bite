@@ -12,6 +12,7 @@ import (
 	"strings"
 	"testing"
 
+	"github.com/gofiber/fiber/v3"
 	"github.com/stretchr/testify/require"
 
 	"github.com/nicksan222/bite/internal/ai"
@@ -225,41 +226,45 @@ func TestChatTurn_sessionAccumulates(t *testing.T) {
 	streamer := &stubStreamer{deltas: []string{"answer"}, final: "answer"}
 	app := newApp(Deps{AI: streamer})
 
-	// Turn 1
-	resp, err := app.Test(postForm("/api/chat", map[string]string{"message": "first"}))
-	require.NoError(t, err)
-	body, _ := io.ReadAll(resp.Body)
-	cookie := resp.Cookies()
-	require.NotEmpty(t, cookie, "first POST must set the session cookie")
-	turn1 := extractTurnID(t, string(body))
+	// Turn 1: post then drain the stream so the asst reply hits the
+	// session history.
+	cookie := runChatTurn(t, app, nil, "first")
+	require.NotNil(t, cookie, "first POST must set the session cookie")
 
-	// Drain the SSE so the asst reply is appended to the session.
-	streamResp, err := app.Test(httptest.NewRequest(http.MethodGet, "/api/chat/stream/"+turn1, nil))
+	// Turn 2: reuse the cookie. By the time runChatTurn pops the turn
+	// off the stash, ai.Streamer sees the full prior context.
+	runChatTurn(t, app, cookie, "second")
+
+	require.Len(t, streamer.gotMessages, 3,
+		"second turn should carry the prior user+asst plus the new user turn")
+	require.Equal(t, []ai.Role{ai.RoleUser, ai.RoleAssistant, ai.RoleUser},
+		[]ai.Role{streamer.gotMessages[0].Role, streamer.gotMessages[1].Role, streamer.gotMessages[2].Role})
+}
+
+// runChatTurn POSTs a message, drains the resulting SSE stream, and
+// returns the session cookie set by the response (or the cookie passed
+// in, whichever is fresher). Centralises the four-line dance every
+// session test was repeating.
+func runChatTurn(t *testing.T, app *fiber.App, cookie *http.Cookie, message string) *http.Cookie {
+	t.Helper()
+	req := postForm("/api/chat", map[string]string{"message": message})
+	if cookie != nil {
+		req.AddCookie(cookie)
+	}
+	resp, err := app.Test(req)
+	require.NoError(t, err)
+	require.Equal(t, http.StatusOK, resp.StatusCode)
+	body, _ := io.ReadAll(resp.Body)
+	turnID := extractTurnID(t, string(body))
+
+	streamResp, err := app.Test(httptest.NewRequest(http.MethodGet, "/api/chat/stream/"+turnID, nil))
 	require.NoError(t, err)
 	_, _ = io.ReadAll(streamResp.Body)
 
-	// Turn 2 — must reuse the cookie.
-	req := postForm("/api/chat", map[string]string{"message": "second"})
-	req.AddCookie(cookie[0])
-	_, err = app.Test(req)
-	require.NoError(t, err)
-
-	// Trigger streaming for turn 2 so we capture the messages it forwards.
-	resp2, err := app.Test(req)
-	require.NoError(t, err)
-	body2, _ := io.ReadAll(resp2.Body)
-	turn2 := extractTurnID(t, string(body2))
-	streamResp2, err := app.Test(httptest.NewRequest(http.MethodGet, "/api/chat/stream/"+turn2, nil))
-	require.NoError(t, err)
-	_, _ = io.ReadAll(streamResp2.Body)
-
-	require.GreaterOrEqual(t, len(streamer.gotMessages), 3,
-		"second turn should include prior user+asst plus the new user message")
-	roles := []ai.Role{}
-	for _, m := range streamer.gotMessages {
-		roles = append(roles, m.Role)
+	if cs := resp.Cookies(); len(cs) > 0 {
+		return cs[0]
 	}
-	require.Contains(t, roles, ai.RoleAssistant, "history must carry the prior assistant reply")
+	return cookie
 }
 
 // TestPumpStreamEvents_assemblesWhenFinalEmpty pins the fallback: if
