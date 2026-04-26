@@ -339,3 +339,72 @@ func TestView_showsStreamingState(t *testing.T) {
 	v := m.View()
 	assert.Contains(t, v, "thinking")
 }
+
+// ─── handleSlash ──────────────────────────────────────────────────────────────
+
+// sendLine drives model.send through the same type-assertion path the
+// production tea loop uses. Saves repeating asModel everywhere.
+func sendLine(t *testing.T, m model, text string) model {
+	t.Helper()
+	tm, _ := m.send(text)
+	return asModel(t, tm)
+}
+
+func TestHandleSlash_appendsHistoryAndPersistsBothSides(t *testing.T) {
+	p := &testPersister{}
+	m := newModel(&testStreamer{}, p, nil)
+	m.slash = func(_ context.Context, line string) (string, error) {
+		assert.Equal(t, "/log_meal pasta", line)
+		return "meal logged", nil
+	}
+
+	m, _ = update(t, m, tea.WindowSizeMsg{Width: 80, Height: 30})
+	got := sendLine(t, m, "/log_meal pasta")
+
+	require.Len(t, got.history, 2)
+	assert.Equal(t, ai.RoleUser, got.history[0].Role)
+	assert.Equal(t, "/log_meal pasta", got.history[0].Content)
+	assert.Equal(t, ai.RoleAssistant, got.history[1].Role)
+	assert.Equal(t, "meal logged", got.history[1].Content)
+	assert.Equal(t, []string{"/log_meal pasta"}, p.userMsgs)
+	assert.Equal(t, []string{"meal logged"}, p.assistantMsgs)
+}
+
+func TestHandleSlash_parseErrorIsInlineNoHistory(t *testing.T) {
+	p := &testPersister{}
+	m := newModel(&testStreamer{}, p, nil)
+	m.slash = func(_ context.Context, _ string) (string, error) {
+		return "", errors.New("unknown command: /nope")
+	}
+
+	m, _ = update(t, m, tea.WindowSizeMsg{Width: 80, Height: 30})
+	got := sendLine(t, m, "/nope")
+
+	require.Error(t, got.err)
+	assert.Empty(t, got.history, "parse errors must not pollute persisted history")
+	assert.Empty(t, p.userMsgs)
+	assert.Empty(t, p.assistantMsgs)
+}
+
+func TestHandleSlash_persistenceErrorSurfacesButHistoryStays(t *testing.T) {
+	p := &testPersister{err: errors.New("disk full")}
+	m := newModel(&testStreamer{}, p, nil)
+	m.slash = func(_ context.Context, _ string) (string, error) { return "ok", nil }
+
+	m, _ = update(t, m, tea.WindowSizeMsg{Width: 80, Height: 30})
+	got := sendLine(t, m, "/cmd")
+
+	require.Error(t, got.err)
+	require.Len(t, got.history, 2, "in-memory history still records the slash turn")
+}
+
+func TestHandleSlash_unsetSlashHandlerFallsThroughToModel(t *testing.T) {
+	// Without WithSlashHandler, "/cmd" lines must go to the model like any
+	// other input — no silent dropping.
+	s := &testStreamer{resp: "fallback"}
+	m := newModel(s, &testPersister{}, nil)
+	m, _ = update(t, m, tea.WindowSizeMsg{Width: 80, Height: 30})
+	got := sendLine(t, m, "/cmd")
+
+	assert.True(t, got.streaming, "with no slash handler, the line should hit the model")
+}
