@@ -130,20 +130,29 @@ func TestAPI_unconfiguredDeps(t *testing.T) {
 	}
 }
 
-// stubStreamer returns the configured deltas then a terminating Done.
-// Used by chat tests that need to drive the SSE pipeline without a real
-// model.
+// stubStreamer returns the configured deltas, then either a terminal
+// error or a terminating Done. Used by chat tests that need to drive the
+// SSE pipeline without a real model.
 type stubStreamer struct {
-	deltas []string
-	final  string
+	deltas   []string
+	final    string
+	streamer error // returned synchronously from Stream — simulates handshake failure
+	tail     error // emitted as a terminal ev.Err — simulates mid-stream failure
 }
 
 func (s stubStreamer) Stream(_ context.Context, _ []ai.Message, _ ...ai.StreamOption) (<-chan ai.StreamEvent, error) {
+	if s.streamer != nil {
+		return nil, s.streamer
+	}
 	ch := make(chan ai.StreamEvent, len(s.deltas)+1)
 	for _, d := range s.deltas {
 		ch <- ai.StreamEvent{Delta: d}
 	}
-	ch <- ai.StreamEvent{Done: true, Final: s.final}
+	if s.tail != nil {
+		ch <- ai.StreamEvent{Err: s.tail}
+	} else {
+		ch <- ai.StreamEvent{Done: true, Final: s.final}
+	}
 	close(ch)
 	return ch, nil
 }
@@ -182,6 +191,41 @@ func TestChat_streamRoundtrip(t *testing.T) {
 	require.Contains(t, got, `"text":" there"`)
 	require.Contains(t, got, "event: done")
 	require.Contains(t, got, `"final":"hi there"`)
+}
+
+// TestChat_streamErrorEvent locks in the mid-stream failure shape:
+// when Stream emits ev.Err, the response body must contain an SSE
+// "event: error" block carrying the error message. Browser clients
+// rely on this to surface the failure in the chat-error banner.
+func TestChat_streamErrorEvent(t *testing.T) {
+	app := newApp(Deps{
+		AI: stubStreamer{deltas: []string{"part"}, tail: errors.New("model exploded")},
+	})
+	resp, err := app.Test(postJSON("/api/chat", `{"message":"hi"}`))
+	require.NoError(t, err)
+	require.Equal(t, http.StatusOK, resp.StatusCode)
+	body, err := io.ReadAll(resp.Body)
+	require.NoError(t, err)
+	got := string(body)
+	require.Contains(t, got, "event: error")
+	require.Contains(t, got, `"message":"model exploded"`)
+	// Mid-stream failure should NOT also emit a terminating "done" event —
+	// otherwise the client double-handles the turn.
+	require.NotContains(t, got, "event: done")
+}
+
+// TestChat_streamHandshakeError covers the handshake-failure branch:
+// when Stream itself returns an error (no channel created) the response
+// must be a JSON 502 — not an SSE stream — so the browser fetch sees
+// .ok === false and routes through the catch path.
+func TestChat_streamHandshakeError(t *testing.T) {
+	app := newApp(Deps{
+		AI: stubStreamer{streamer: errors.New("upstream down")},
+	})
+	resp, err := app.Test(postJSON("/api/chat", `{"message":"hi"}`))
+	require.NoError(t, err)
+	require.Equal(t, http.StatusBadGateway, resp.StatusCode)
+	require.Contains(t, resp.Header.Get("Content-Type"), "application/json")
 }
 
 func postJSON(path, body string) *http.Request {
