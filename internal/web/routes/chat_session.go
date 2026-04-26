@@ -19,7 +19,7 @@ const chatSessionCookie = "bite_chat"
 
 // chatSessionTTL is how long an idle session stays alive. Generous
 // because the tab stays open between turns and a thinking user is normal.
-var chatSessionTTL = 6 * time.Hour
+const chatSessionTTL = 6 * time.Hour
 
 // chatSessionStore holds every active session in memory. Restart loses
 // history, which is acceptable: the dashboard is local-only and a long
