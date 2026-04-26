@@ -17,16 +17,13 @@ type SlashOutcome struct {
 	RunError   error
 }
 
-// SlashHandler is the function shape the TUI accepts via tui.WithSlashHandler:
-// take a slash line, return the rendered output text or an error.
-type SlashHandler func(ctx context.Context, line string) (string, error)
-
-// NewSlashHandler wires a SlashHandler around Dispatch + RenderResultForChat
-// so callers don't have to repeat the parse/run/render adapter dance.
+// NewSlashHandler returns a function compatible with tui.SlashHandler that
+// wraps Dispatch + RenderResultForChat so callers don't have to repeat the
+// parse/run/render adapter dance.
 //
 // Returned errors are the union of parse and run errors — surface them
 // inline; on success the string is the chat-rendered result.
-func NewSlashHandler(deps Deps) SlashHandler {
+func NewSlashHandler(deps Deps) func(ctx context.Context, line string) (string, error) {
 	return func(ctx context.Context, line string) (string, error) {
 		out := Dispatch(ctx, deps, line)
 		if out.ParseError != nil {

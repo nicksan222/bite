@@ -58,7 +58,7 @@ func runChat(ctx context.Context, resumeID int64) error {
 	streamOpts := []ai.StreamOption{ai.WithTools(tools.AITools(deps))}
 	persist := tools.NewChatPersister(store, convID, len(history) > 0)
 	prog := tui.New(ctx, client, persist, history, streamOpts,
-		tui.WithSlashHandler(tui.SlashHandler(tools.NewSlashHandler(deps))))
+		tui.WithSlashHandler(tools.NewSlashHandler(deps)))
 	_, err = prog.Run()
 	return err
 }
