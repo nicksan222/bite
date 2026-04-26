@@ -127,12 +127,12 @@ func pumpStreamEvents(w *bufio.Writer, events <-chan ai.StreamEvent) {
 // bypassing the appendix that tools/systemprompt builds.
 func buildChatHistory(req chatRequest) ([]ai.Message, error) {
 	out := make([]ai.Message, 0, len(req.History)+1)
-	for i, m := range req.History {
-		role, err := parseChatRole(m.Role)
+	for i, prior := range req.History {
+		role, err := parseChatRole(prior.Role)
 		if err != nil {
 			return nil, fmt.Errorf("history[%d]: %w", i, err)
 		}
-		out = append(out, ai.Message{Role: role, Content: m.Content})
+		out = append(out, ai.Message{Role: role, Content: prior.Content})
 	}
 	out = append(out, ai.Message{Role: ai.RoleUser, Content: req.Message})
 	return out, nil
