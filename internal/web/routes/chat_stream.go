@@ -126,9 +126,9 @@ func writeSSEErrorAndDone(w *bufio.Writer, msg string) {
 	writeSSE(w, "done", "")
 }
 
-// setSSEHeaders configures the response for a Server-Sent Events stream.
-// Called only once Stream has succeeded so a JSON-error fallback above
-// isn't preceded by SSE Content-Type being staged.
+// setSSEHeaders configures the response for a Server-Sent Events stream
+// — Content-Type plus the cache/buffer hints that keep proxies and
+// browsers from delaying or coalescing per-token deltas.
 func setSSEHeaders(c fiber.Ctx) {
 	c.Set("Content-Type", "text/event-stream")
 	c.Set("Cache-Control", "no-cache")
