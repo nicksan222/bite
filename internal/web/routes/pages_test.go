@@ -24,8 +24,8 @@ func TestPages_render(t *testing.T) {
 		path  string
 		title string
 	}{
-		{"/", "Dashboard"},
-		{"/chat", "Chat"},
+		{"/", "Chat"},
+		{"/dashboard", "Dashboard"},
 		{"/meals", "Meals"},
 		{"/tools", "Tools"},
 	}

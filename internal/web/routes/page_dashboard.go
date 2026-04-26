@@ -17,8 +17,8 @@ var dashboardCards = []dashboardCard{
 	{"get_goals", "Goals", "Calorie and macro targets currently configured."},
 }
 
-// pageDashboard handles GET /. The cards' bodies populate via HTMX
-// (hx-trigger="load") — the server only emits the layout shell here.
+// pageDashboard handles GET /dashboard. The cards' bodies populate via
+// HTMX (hx-trigger="load") — the server only emits the layout shell here.
 func pageDashboard() fiber.Handler {
 	return func(c fiber.Ctx) error {
 		return render(c, "dashboard.html", struct {

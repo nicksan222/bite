@@ -20,8 +20,8 @@ func Register(app *fiber.App, d Deps) {
 
 	app.Get("/static/*", serveStatic())
 
-	app.Get("/", pageDashboard())
-	app.Get("/chat", pageChat())
+	app.Get("/", pageChat())
+	app.Get("/dashboard", pageDashboard())
 	app.Get("/meals", pageMeals())
 	app.Get("/tools", pageTools(d))
 }
