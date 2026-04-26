@@ -24,15 +24,19 @@ var chatTurnTmpl = template.Must(template.New("chat-turn").Parse(
 </div>
 `))
 
+// chatTurnData is the template's expected shape. Named (rather than an
+// inline anonymous struct) so the contract is discoverable: a future
+// reader can grep for chatTurnData and find both the template fields
+// and the renderer in one go.
+type chatTurnData struct {
+	TurnID   string
+	UserText string
+}
+
 // renderChatTurn produces the HTML fragment hx-swapped into the
-// transcript on a successful POST /api/chat. Encapsulating the
-// anonymous-struct dance keeps the handler readable and gives the
-// template's data shape one canonical home.
+// transcript on a successful POST /api/chat.
 func renderChatTurn(turnID, userText string) ([]byte, error) {
 	var buf bytes.Buffer
-	err := chatTurnTmpl.Execute(&buf, struct {
-		TurnID   string
-		UserText string
-	}{TurnID: turnID, UserText: userText})
+	err := chatTurnTmpl.Execute(&buf, chatTurnData{TurnID: turnID, UserText: userText})
 	return buf.Bytes(), err
 }
