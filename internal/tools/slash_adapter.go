@@ -204,21 +204,40 @@ func tokeniseSlash(s string) ([]string, error) {
 }
 
 // helpText lists every registered tool with its summary. Generated, not
-// hand-maintained: a new tool shows up automatically.
+// hand-maintained: a new tool shows up automatically. Positional params are
+// included in the displayed signature so the user can see what to type.
 func helpText() string {
 	all := All()
 	if len(all) == 0 {
 		return "no slash commands registered"
 	}
+
+	type row struct{ left, right string }
+	rows := make([]row, 0, len(all)+1)
+	width := 0
+	for _, t := range all {
+		sig, _, _ := positionalSignature(t)
+		left := "/" + t.Name
+		if sig != "" {
+			left += " " + sig
+		}
+		if l := len(left); l > width {
+			width = l
+		}
+		rows = append(rows, row{left, t.Summary})
+	}
+	rows = append(rows, row{"/help", "show this list"})
+	if l := len("/help"); l > width {
+		width = l
+	}
+
 	var b strings.Builder
 	b.WriteString("Slash commands:\n")
-	for _, t := range all {
-		b.WriteString("  /")
-		b.WriteString(t.Name)
-		b.WriteString(" — ")
-		b.WriteString(t.Summary)
-		b.WriteString("\n")
+	for i, r := range rows {
+		fmt.Fprintf(&b, "  %-*s  — %s", width, r.left, r.right)
+		if i < len(rows)-1 {
+			b.WriteByte('\n')
+		}
 	}
-	b.WriteString("  /help — show this list")
 	return b.String()
 }

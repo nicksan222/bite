@@ -53,6 +53,25 @@ func TestDispatch_help(t *testing.T) {
 	})
 }
 
+// TestHelpText_includesPositionalSignature ensures /help shows the same
+// "<a> [b]" placeholder shape that `bite <tool> --help` shows, so a user
+// reading slash help knows what arguments to type without leaving the TUI.
+func TestHelpText_includesPositionalSignature(t *testing.T) {
+	withCleanRegistry(t, func() {
+		Register(Tool{
+			Name: "kick", Summary: "kick something", Description: "d",
+			Params: []Param{
+				{Name: "target", Type: ParamString, Required: true, Positional: true},
+				{Name: "force", Type: ParamInt, Positional: true},
+			},
+			Run: func(_ context.Context, _ Deps, _ Args) (Result, error) { return Result{Text: "ok"}, nil },
+		})
+		got := helpText()
+		assert.Contains(t, got, "/kick <target> [force]",
+			"/help must show positional placeholders so the user knows what to type")
+	})
+}
+
 func TestDispatch_positional(t *testing.T) {
 	withCleanRegistry(t, func() {
 		var seen Args

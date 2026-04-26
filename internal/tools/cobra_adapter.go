@@ -125,19 +125,33 @@ func positionalArgsValidator(required, total int) cobra.PositionalArgs {
 // buildUse renders the `Use` string for the cobra command, including
 // positional placeholders. Returns (use, required-positional-count, total-positional-count).
 func buildUse(t Tool) (string, int, int) {
+	sig, required, total := positionalSignature(t)
+	use := t.Name
+	if sig != "" {
+		use += " " + sig
+	}
+	return use, required, total
+}
+
+// positionalSignature returns just the "<a> [b]" placeholder string for a
+// tool's positionals, plus the (required, total) counts. Shared with the
+// slash help renderer so both surfaces show the same shape.
+func positionalSignature(t Tool) (string, int, int) {
 	var b strings.Builder
-	b.WriteString(t.Name)
 	required, total := 0, 0
 	for _, p := range t.Params {
 		if !p.Positional {
 			continue
 		}
 		total++
+		if b.Len() > 0 {
+			b.WriteByte(' ')
+		}
 		if p.Required {
 			required++
-			fmt.Fprintf(&b, " <%s>", p.Name)
+			fmt.Fprintf(&b, "<%s>", p.Name)
 		} else {
-			fmt.Fprintf(&b, " [%s]", p.Name)
+			fmt.Fprintf(&b, "[%s]", p.Name)
 		}
 	}
 	return b.String(), required, total
