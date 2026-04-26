@@ -151,8 +151,10 @@ func TestChatTurn_idIsSingleUse(t *testing.T) {
 	require.NoError(t, err)
 	require.Equal(t, http.StatusOK, second.StatusCode, "stream endpoint always returns 200; the failure rides as an SSE error event")
 	body2, _ := io.ReadAll(second.Body)
-	require.Contains(t, string(body2), "event: error")
-	require.Contains(t, string(body2), "turn expired or not found")
+	got2 := string(body2)
+	require.Contains(t, got2, "event: error")
+	require.Contains(t, got2, "turn expired or not found")
+	require.Contains(t, got2, "event: done", "second-pop path must still terminate cleanly")
 }
 
 // TestChatTurn_unknownIdYieldsSSEError exercises the cold path: a GET
@@ -228,8 +230,10 @@ func TestChatStream_handshakeErrorYieldsSSEError(t *testing.T) {
 	require.NoError(t, err)
 	require.Equal(t, http.StatusOK, streamResp.StatusCode)
 	streamBody, _ := io.ReadAll(streamResp.Body)
-	require.Contains(t, string(streamBody), "event: error")
-	require.Contains(t, string(streamBody), "upstream down")
+	got := string(streamBody)
+	require.Contains(t, got, "event: error")
+	require.Contains(t, got, "upstream down")
+	require.Contains(t, got, "event: done", "handshake-failure path must still terminate cleanly")
 }
 
 // TestChatTurn_sessionAccumulates: the second turn's history must
