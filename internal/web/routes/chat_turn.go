@@ -42,7 +42,7 @@ func (s *turnStoreT) stash(t pendingTurn) string {
 	s.mu.Lock()
 	defer s.mu.Unlock()
 	s.pruneLocked()
-	id := newTurnID()
+	id := newRandomID()
 	t.expires = time.Now().Add(turnTTL)
 	s.pending[id] = t
 	return id
@@ -70,8 +70,6 @@ func (s *turnStoreT) pruneLocked() {
 		}
 	}
 }
-
-func newTurnID() string { return newRandomID() }
 
 // chatTurnTmpl is the HTML fragment hx-swapped into the transcript when
 // the user submits a turn. The user bubble is fully formed; the

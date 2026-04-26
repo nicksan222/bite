@@ -53,7 +53,7 @@ func (s *sessionStore) getOrCreate(c fiber.Ctx) (string, *chatSession) {
 			return id, sess
 		}
 	}
-	id = newSessionID()
+	id = newRandomID()
 	sess := &chatSession{last: time.Now()}
 	s.sessions[id] = sess
 	c.Cookie(&fiber.Cookie{
@@ -100,5 +100,3 @@ func newRandomID() string {
 	_, _ = rand.Read(b)
 	return hex.EncodeToString(b)
 }
-
-func newSessionID() string { return newRandomID() }
