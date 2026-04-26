@@ -13,8 +13,7 @@ func init() {
 		Description: `Open the interactive chat TUI.
 
 By default a fresh conversation is created. Pass --resume <id> to continue a
-saved conversation; conversation IDs are surfaced by other tools ("bite --help"
-lists everything).
+saved conversation. Run "bite --help" to see every command for finding ids.
 
 Inside chat, type /<name> to invoke any registered tool directly (deterministic,
 no model call). Type /help to list every available slash command.`,
