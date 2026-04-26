@@ -6,7 +6,9 @@
 *.dll
 *.so
 *.dylib
-bite
+# /bite (with leading slash) only matches a top-level binary; without it,
+# pattern would also match the cmd/bite/ source directory.
+/bite
 
 # Test / coverage artifacts
 *.test
