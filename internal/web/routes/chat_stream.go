@@ -43,7 +43,10 @@ func chatStream(d Deps) fiber.Handler {
 			return jsonError(c, http.StatusBadRequest, "empty message")
 		}
 
-		history := buildChatHistory(req)
+		history, err := buildChatHistory(req)
+		if err != nil {
+			return jsonError(c, http.StatusBadRequest, err.Error())
+		}
 
 		ctx := c.Context()
 		var opts []ai.StreamOption
@@ -82,13 +85,33 @@ func chatStream(d Deps) fiber.Handler {
 	}
 }
 
-func buildChatHistory(req chatRequest) []ai.Message {
+// buildChatHistory turns the JSON request into the AI message slice.
+// Only user/assistant roles are accepted from the wire — system/tool
+// roles would let a direct caller seed the model with a fake persona,
+// bypassing the appendix that tools/systemprompt builds.
+func buildChatHistory(req chatRequest) ([]ai.Message, error) {
 	out := make([]ai.Message, 0, len(req.History)+1)
-	for _, m := range req.History {
-		out = append(out, ai.Message{Role: ai.Role(m.Role), Content: m.Content})
+	for i, m := range req.History {
+		role, err := parseChatRole(m.Role)
+		if err != nil {
+			return nil, fmt.Errorf("history[%d]: %w", i, err)
+		}
+		out = append(out, ai.Message{Role: role, Content: m.Content})
 	}
 	out = append(out, ai.Message{Role: ai.RoleUser, Content: req.Message})
-	return out
+	return out, nil
+}
+
+// parseChatRole accepts only the two roles a real chat client produces.
+// Anything else — empty, "system", a typo — is rejected up front so it
+// never reaches the model.
+func parseChatRole(s string) (ai.Role, error) {
+	switch ai.Role(s) {
+	case ai.RoleUser, ai.RoleAssistant:
+		return ai.Role(s), nil
+	default:
+		return "", fmt.Errorf("invalid role %q (want user or assistant)", s)
+	}
 }
 
 // writeSSE emits one Server-Sent Event. Errors writing mean the client
