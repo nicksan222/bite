@@ -48,7 +48,19 @@ make lint    # golangci-lint
 make build   # build ./bin/bite
 ```
 
-Run `bite doctor` if something feels off.
+Every domain action is also a top-level subcommand and a slash command inside chat — both auto-generated from the same `internal/tools` registry:
+
+```bash
+bite log_meal "200g pasta with pesto"          # CLI
+bite meals_today                               # today's intake summary
+bite ask "kcal in 200g salmon?"                # one-shot question
+
+# inside chat
+> /log_meal pasta kcal=480
+> /help                                        # list every slash command
+```
+
+Run `bite doctor` if something feels off — the check list is auto-derived from registered checks and grows whenever `tools.RegisterCheck` is added.
 
 ## Stack
 
