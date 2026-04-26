@@ -9,6 +9,15 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
+func TestChatStreamOptions_alwaysBindsCurrentRegistry(t *testing.T) {
+	withCleanRegistry(t, func() {
+		Register(noopTool("alpha"))
+		Register(noopTool("beta"))
+		opts := ChatStreamOptions(Deps{})
+		require.Len(t, opts, 1, "ChatStreamOptions returns exactly the WithTools option")
+	})
+}
+
 func TestAITools_emptyRegistry(t *testing.T) {
 	withCleanRegistry(t, func() {
 		assert.Empty(t, AITools(Deps{}))
