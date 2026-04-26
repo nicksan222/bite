@@ -24,6 +24,21 @@ func TestAITools_emptyRegistry(t *testing.T) {
 	})
 }
 
+// TestAITools_skipsSkipAITools confirms the SkipAI gate excludes a tool from
+// the model-callable list. Without this gate, chat would surface as an AI
+// tool the model could invoke recursively.
+func TestAITools_skipsSkipAITools(t *testing.T) {
+	withCleanRegistry(t, func() {
+		Register(noopTool("visible"))
+		hidden := noopTool("hidden")
+		hidden.SkipAI = true
+		Register(hidden)
+		got := AITools(Deps{})
+		require.Len(t, got, 1)
+		assert.Equal(t, "visible", got[0].Name)
+	})
+}
+
 func TestAITools_paramsTranslated(t *testing.T) {
 	withCleanRegistry(t, func() {
 		tt := noopTool("with_params")

@@ -67,6 +67,30 @@ func indexOfNewline(s string) int {
 	return -1
 }
 
+// TestRegisterCobra_skipFlagsDoNotAffectCobra confirms that SkipAI and
+// SkipSlash tools are still mounted as cobra subcommands — those flags only
+// gate the AI and slash surfaces, not cobra (which is the entire point of
+// having a "cobra-only" Tool category).
+func TestRegisterCobra_skipFlagsDoNotAffectCobra(t *testing.T) {
+	withCleanRegistry(t, func() {
+		Register(Tool{
+			Name: "cobra_only", Summary: "s", Description: "d",
+			SkipAI: true, SkipSlash: true,
+			Run: func(_ context.Context, _ Deps, _ Args) (Result, error) { return Result{}, nil },
+		})
+		root := &cobra.Command{Use: "test"}
+		RegisterCobra(root, StaticDeps(Deps{}))
+		var found bool
+		for _, c := range root.Commands() {
+			if c.Name() == "cobra_only" {
+				found = true
+				break
+			}
+		}
+		assert.True(t, found, "SkipAI+SkipSlash tool must still register as a cobra subcommand")
+	})
+}
+
 // TestRegisterCobra_perToolHelpShowsExamples ensures each tool's own
 // Examples (not just the rootCmd's merged block) surface in
 // `bite <tool> --help`. Previously they only appeared on `bite --help`.
