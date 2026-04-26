@@ -25,6 +25,21 @@ type chatMsgDTO struct {
 	Content string `json:"content"`
 }
 
+// SSE event payloads — one struct per `event:` name. Typed shapes keep
+// the wire contract visible at a glance and avoid a fresh map allocation
+// per delta token.
+type (
+	sseDelta struct {
+		Text string `json:"text"`
+	}
+	sseDone struct {
+		Final string `json:"final"`
+	}
+	sseError struct {
+		Message string `json:"message"`
+	}
+)
+
 // chatStream handles POST /api/chat as Server-Sent Events. The browser
 // reads one event per delta plus a terminating "done" event. Tool-calls
 // happen transparently inside ai.Streamer because Deps.StreamOpts
@@ -69,13 +84,13 @@ func chatStream(d Deps) fiber.Handler {
 			for ev := range events {
 				switch {
 				case ev.Err != nil:
-					writeSSE(w, "error", map[string]string{"message": ev.Err.Error()})
+					writeSSE(w, "error", sseError{Message: ev.Err.Error()})
 					return
 				case ev.Done:
-					writeSSE(w, "done", map[string]string{"final": ev.Final})
+					writeSSE(w, "done", sseDone{Final: ev.Final})
 					return
 				case ev.Delta != "":
-					writeSSE(w, "delta", map[string]string{"text": ev.Delta})
+					writeSSE(w, "delta", sseDelta{Text: ev.Delta})
 					if err := w.Flush(); err != nil {
 						return
 					}
