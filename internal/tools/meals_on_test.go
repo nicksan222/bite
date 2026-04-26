@@ -42,6 +42,16 @@ func TestMealsOn_filtersByDate(t *testing.T) {
 	assert.Contains(t, res.Text, "200")
 }
 
+func TestMealsOn_storeError(t *testing.T) {
+	ctx := context.Background()
+	deps := freshDeps(t)
+	require.NoError(t, deps.Store.Close())
+	_, err := MustGet("meals_on").Run(ctx, deps, NewArgs(map[string]any{
+		"date": "2026-04-26",
+	}))
+	require.Error(t, err)
+}
+
 func TestMealsOn_invalidDate(t *testing.T) {
 	ctx := context.Background()
 	deps := freshDeps(t)
