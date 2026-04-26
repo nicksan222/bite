@@ -1,6 +1,7 @@
 package routes
 
 import (
+	"bufio"
 	"context"
 	"errors"
 	"io"
@@ -151,6 +152,44 @@ func TestChat_streamHandshakeError(t *testing.T) {
 	require.NoError(t, err)
 	require.Equal(t, http.StatusBadGateway, resp.StatusCode)
 	require.Contains(t, resp.Header.Get("Content-Type"), "application/json")
+}
+
+// failingWriter errors on the Nth write — used to drive
+// pumpStreamEvents into its Flush-error early return without standing
+// up a real HTTP client.
+type failingWriter struct {
+	written int
+	failAt  int
+}
+
+func (f *failingWriter) Write(p []byte) (int, error) {
+	f.written++
+	if f.written >= f.failAt {
+		return 0, errors.New("disconnected")
+	}
+	return len(p), nil
+}
+
+// TestPumpStreamEvents_clientDisconnectStopsLoop proves that once a
+// write to the SSE stream fails (client closed the connection), the
+// pump exits immediately rather than continuing to drain the channel.
+// Otherwise a slow-disconnecting client would force the model goroutine
+// to keep producing tokens we'd silently throw away.
+func TestPumpStreamEvents_clientDisconnectStopsLoop(t *testing.T) {
+	ch := make(chan ai.StreamEvent, 5)
+	for i := 0; i < 5; i++ {
+		ch <- ai.StreamEvent{Delta: "tok"}
+	}
+	close(ch)
+
+	w := bufio.NewWriter(&failingWriter{failAt: 1})
+	pumpStreamEvents(w, ch)
+
+	// If the loop ignored the Flush error, every event would have been
+	// pulled — leaving no events behind. We expect the pump to bail
+	// after the first failed write, leaving the rest of the buffered
+	// events in the channel.
+	require.NotEmpty(t, ch, "pump must stop draining the channel once write fails")
 }
 
 // TestBuildChatHistory_appendsNewUserAtTail proves the contract chat.js
