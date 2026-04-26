@@ -160,6 +160,22 @@ func TestChatStream_unconfigured(t *testing.T) {
 	require.Equal(t, http.StatusServiceUnavailable, resp.StatusCode)
 }
 
+// TestChatStream_handshakeErrorIs502 covers the rarer branch where
+// Stream() itself errors before a channel is opened — a 502 surfaces to
+// the EventSource, htmx-ext-sse fires htmx:sseError, and the user can
+// retry. The alternative (no response at all) would silently hang.
+func TestChatStream_handshakeErrorIs502(t *testing.T) {
+	app := newApp(Deps{AI: &stubStreamer{streamer: errors.New("upstream down")}})
+	resp, err := app.Test(postForm("/api/chat", map[string]string{"message": "hi"}))
+	require.NoError(t, err)
+	body, _ := io.ReadAll(resp.Body)
+	turnID := extractTurnID(t, string(body))
+
+	streamResp, err := app.Test(httptest.NewRequest(http.MethodGet, "/api/chat/stream/"+turnID, nil))
+	require.NoError(t, err)
+	require.Equal(t, http.StatusBadGateway, streamResp.StatusCode)
+}
+
 // TestChatTurn_sessionAccumulates: the second turn's history must
 // include the assistant reply from the first turn. Proves the session
 // store is wired and the post-stream history append actually happens.
