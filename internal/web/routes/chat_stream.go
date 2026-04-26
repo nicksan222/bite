@@ -63,6 +63,10 @@ func chatStart(d Deps) fiber.Handler {
 // drops event.data straight into the target. On a clean terminate the
 // assistant message is appended to the session history so the next
 // turn carries proper context.
+//
+// Tool-call bindings come through Deps.StreamOpts (typically
+// ai.WithTools) — that is the seam the chat tool uses to extend the
+// model's capabilities, mirroring the TUI's chat behaviour.
 func chatStream(d Deps) fiber.Handler {
 	return func(c fiber.Ctx) error {
 		// Capture every per-request value here. SendStreamWriter runs
