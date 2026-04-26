@@ -93,14 +93,14 @@ func runDoctor(ctx context.Context, _ Deps, args Args) (Result, error) {
 			softs = append(softs, c)
 			continue
 		}
-		if !runCheck(ctx, &sb, c, "✗") {
+		if !runCheck(ctx, &sb, c) {
 			failed++
 		}
 	}
 	if len(softs) > 0 {
 		sb.WriteString("\n")
 		for _, c := range softs {
-			runCheck(ctx, &sb, c, "!")
+			runCheck(ctx, &sb, c)
 		}
 	}
 	if failed > 0 {
@@ -111,10 +111,13 @@ func runDoctor(ctx context.Context, _ Deps, args Args) (Result, error) {
 	return Result{Text: sb.String()}, nil
 }
 
-func runCheck(ctx context.Context, b *strings.Builder, c Check, failGlyph string) bool {
+// runCheck executes one Check and writes a one-line status row. The fail
+// glyph derives from c.Severity — Hard ✗, Soft ! — so adding a new severity
+// only requires extending Severity.FailGlyph.
+func runCheck(ctx context.Context, b *strings.Builder, c Check) bool {
 	detail, err := c.Run(ctx)
 	if err != nil {
-		fmt.Fprintf(b, "  %s %-22s  %v\n", failGlyph, c.Name, err)
+		fmt.Fprintf(b, "  %s %-22s  %v\n", c.Severity.FailGlyph(), c.Name, err)
 		return false
 	}
 	fmt.Fprintf(b, "  ✓ %-22s  %s\n", c.Name, detail)

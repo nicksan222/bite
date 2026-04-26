@@ -27,6 +27,17 @@ func (s Severity) String() string {
 	return "unknown"
 }
 
+// FailGlyph returns the prefix character used by the doctor for a failed
+// check at this severity. Hard failures get "✗" (an outright fail); soft
+// failures get "!" (a warning). Centralised here so doctor output stays
+// consistent with the Severity enum.
+func (s Severity) FailGlyph() string {
+	if s == SeveritySoft {
+		return "!"
+	}
+	return "✗"
+}
+
 // Check is a single doctor probe. Checks register themselves from
 // package-level init(); the doctor tool iterates the registry.
 //

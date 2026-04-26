@@ -249,12 +249,23 @@ func TestGateParams_includesEveryDistinctGate(t *testing.T) {
 func TestRunCheck_recordsFailure(t *testing.T) {
 	var sb strings.Builder
 	ok := runCheck(context.Background(), &sb, Check{
-		Name: "fails",
-		Run:  func(_ context.Context) (string, error) { return "", errors.New("boom") },
-	}, "✗")
+		Name: "fails", Severity: SeverityHard,
+		Run: func(_ context.Context) (string, error) { return "", errors.New("boom") },
+	})
 	assert.False(t, ok)
 	assert.Contains(t, sb.String(), "fails")
 	assert.Contains(t, sb.String(), "boom")
+	assert.Contains(t, sb.String(), "✗", "hard failure must render with ✗ glyph")
+}
+
+func TestRunCheck_softFailureUsesWarningGlyph(t *testing.T) {
+	var sb strings.Builder
+	ok := runCheck(context.Background(), &sb, Check{
+		Name: "warn", Severity: SeveritySoft,
+		Run: func(_ context.Context) (string, error) { return "", errors.New("boom") },
+	})
+	assert.False(t, ok)
+	assert.Contains(t, sb.String(), "!", "soft failure must render with ! glyph")
 }
 
 func TestSeverity_String(t *testing.T) {
@@ -275,9 +286,9 @@ func TestDescribeCheck_rendersNameDescAndGate(t *testing.T) {
 func TestRunCheck_recordsSuccess(t *testing.T) {
 	var sb strings.Builder
 	ok := runCheck(context.Background(), &sb, Check{
-		Name: "passes",
-		Run:  func(_ context.Context) (string, error) { return "all good", nil },
-	}, "✗")
+		Name: "passes", Severity: SeverityHard,
+		Run: func(_ context.Context) (string, error) { return "all good", nil },
+	})
 	assert.True(t, ok)
 	assert.Contains(t, sb.String(), "passes")
 	assert.Contains(t, sb.String(), "all good")
