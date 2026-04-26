@@ -1,6 +1,8 @@
 package routes
 
 import (
+	"maps"
+	"slices"
 	"testing"
 	"testing/fstest"
 
@@ -17,7 +19,7 @@ func TestParsePages_loadsAllPages(t *testing.T) {
 	}
 	got, err := parsePages(src)
 	require.NoError(t, err)
-	require.ElementsMatch(t, []string{"foo.html", "bar.html"}, mapKeys(got))
+	require.ElementsMatch(t, []string{"foo.html", "bar.html"}, slices.Collect(maps.Keys(got)))
 }
 
 // TestParsePages_skipsLayout proves layout.html is never returned as a
@@ -44,12 +46,4 @@ func TestParsePages_missingContentBlock(t *testing.T) {
 	_, err := parsePages(src)
 	require.Error(t, err)
 	require.Contains(t, err.Error(), "broken.html")
-}
-
-func mapKeys[V any](m map[string]V) []string {
-	out := make([]string, 0, len(m))
-	for k := range m {
-		out = append(out, k)
-	}
-	return out
 }
