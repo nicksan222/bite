@@ -14,8 +14,10 @@ macro totals.`,
 		Prompt: `Call meals_recent when the user asks for their last few meals regardless of
 when they were eaten ("show my last 5 meals").`,
 		Params: []Param{
-			{Name: "limit", Type: ParamInt, Required: true, Positional: true,
-				Desc: "How many meals to show."},
+			// Optional with a sensible default so `bite meals_recent` (no
+			// args) returns the last 10 meals without ceremony.
+			{Name: "limit", Type: ParamInt, Positional: true, Default: int64(10),
+				Desc: "How many meals to show (default 10)."},
 		},
 		Run: runMealsRecent,
 	})
@@ -24,7 +26,7 @@ when they were eaten ("show my last 5 meals").`,
 func runMealsRecent(ctx context.Context, deps Deps, args Args) (Result, error) {
 	limit := args.Int("limit")
 	if limit <= 0 {
-		return Result{}, fmt.Errorf("limit must be positive, got %d", limit)
+		limit = 10
 	}
 	meals, err := deps.Store.ListRecentMeals(ctx, limit)
 	if err != nil {
@@ -35,10 +37,8 @@ func runMealsRecent(ctx context.Context, deps Deps, args Args) (Result, error) {
 	}
 
 	loc := deps.LocOrDefault()
-	tbl := &Table{
-		Headers: []string{"ID", "TIME", "TITLE", "KCAL", "P", "C", "F"},
-	}
-	var totalKcal, totalP, totalC, totalF float64
+	tbl := &Table{Headers: []string{"ID", "TIME", "TITLE", "KCAL", "P", "C", "F"}}
+	var tot totals
 	for _, m := range meals {
 		tbl.Rows = append(tbl.Rows, []string{
 			fmt.Sprintf("%d", m.ID),
@@ -49,17 +49,14 @@ func runMealsRecent(ctx context.Context, deps Deps, args Args) (Result, error) {
 			fmt.Sprintf("%.0f", m.CarbsG),
 			fmt.Sprintf("%.0f", m.FatG),
 		})
-		totalKcal += m.Kcal
-		totalP += m.ProteinG
-		totalC += m.CarbsG
-		totalF += m.FatG
+		tot.add(m)
 	}
 	tbl.Footer = []string{
 		"", "", "total",
-		fmt.Sprintf("%.0f", totalKcal),
-		fmt.Sprintf("%.0f", totalP),
-		fmt.Sprintf("%.0f", totalC),
-		fmt.Sprintf("%.0f", totalF),
+		fmt.Sprintf("%.0f", tot.Kcal),
+		fmt.Sprintf("%.0f", tot.ProteinG),
+		fmt.Sprintf("%.0f", tot.CarbsG),
+		fmt.Sprintf("%.0f", tot.FatG),
 	}
 	return Result{Table: tbl}, nil
 }
