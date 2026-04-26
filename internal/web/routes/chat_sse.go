@@ -46,12 +46,10 @@ func pumpStreamEvents(w *bufio.Writer, events <-chan ai.StreamEvent) string {
 	for ev := range events {
 		switch {
 		case ev.Err != nil:
-			// Mid-stream failure: emit error AND a terminating done
-			// so the browser's sse-close="done" hook fires cleanly,
-			// matching the contract writeSSEErrorAndDone uses for
-			// pre-stream failures.
-			writeSSE(w, sseEventError, ev.Err.Error())
-			writeSSE(w, sseEventDone, "")
+			// Mid-stream failure: same wire shape as pre-stream
+			// failures so the browser's sse-close="done" hook fires
+			// cleanly regardless of where in the pipeline we failed.
+			writeSSEErrorAndDone(w, ev.Err.Error())
 			return ""
 		case ev.Done:
 			writeSSE(w, sseEventDone, "")
