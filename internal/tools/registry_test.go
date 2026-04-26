@@ -3,6 +3,7 @@ package tools
 import (
 	"context"
 	"testing"
+	"time"
 
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
@@ -164,6 +165,32 @@ func TestArgs_StringList_filtersWrongTypes(t *testing.T) {
 	assert.Equal(t, []string{"a", "b"}, a.StringList("xs"))
 }
 
+func TestArgs_FloatAcceptsAllNumericTypes(t *testing.T) {
+	a := NewArgs(map[string]any{
+		"f64": float64(1.5),
+		"f32": float32(2.5),
+		"i":   3,
+		"i64": int64(4),
+	})
+	assert.Equal(t, 1.5, a.Float("f64"))
+	assert.Equal(t, 2.5, a.Float("f32"))
+	assert.Equal(t, 3.0, a.Float("i"))
+	assert.Equal(t, 4.0, a.Float("i64"))
+}
+
+func TestArgs_IntAcceptsAllNumericTypes(t *testing.T) {
+	a := NewArgs(map[string]any{
+		"i":   7,
+		"i64": int64(8),
+		"f32": float32(9.7),
+		"f64": 10.4,
+	})
+	assert.Equal(t, int64(7), a.Int("i"))
+	assert.Equal(t, int64(8), a.Int("i64"))
+	assert.Equal(t, int64(9), a.Int("f32"))
+	assert.Equal(t, int64(10), a.Int("f64"))
+}
+
 func TestArgs_typeMismatchReturnsZero(t *testing.T) {
 	a := NewArgs(map[string]any{
 		"s": 42,         // not a string
@@ -186,6 +213,23 @@ func TestArgs_zeroOnMissing(t *testing.T) {
 	assert.Equal(t, 0.0, a.Float("x"))
 	assert.False(t, a.Bool("x"))
 	assert.Nil(t, a.StringList("x"))
+}
+
+func TestDeps_NowOrDefault(t *testing.T) {
+	// Production path: Deps.Now is nil, NowOrDefault returns time.Now().
+	got := (Deps{}).NowOrDefault()
+	assert.WithinDuration(t, time.Now(), got, time.Second)
+
+	// Test path: Deps.Now returns a fixed value.
+	fixed := time.Date(2026, 4, 26, 10, 0, 0, 0, time.UTC)
+	d := Deps{Now: func() time.Time { return fixed }}
+	assert.Equal(t, fixed, d.NowOrDefault())
+}
+
+func TestDeps_LocOrDefault(t *testing.T) {
+	assert.Equal(t, time.Local, (Deps{}).LocOrDefault())
+	d := Deps{Loc: time.UTC}
+	assert.Equal(t, time.UTC, d.LocOrDefault())
 }
 
 func TestFlagName_kebabsUnderscores(t *testing.T) {

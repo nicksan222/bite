@@ -165,6 +165,19 @@ func TestRegisterCobra_invalidPositional_errors(t *testing.T) {
 	})
 }
 
+func TestCountingWriter_tracksBytes(t *testing.T) {
+	var buf bytes.Buffer
+	cw := &countingWriter{w: &buf}
+	n, err := cw.Write([]byte("hello"))
+	require.NoError(t, err)
+	assert.Equal(t, 5, n)
+	assert.Equal(t, 5, cw.n)
+	assert.Equal(t, "hello", buf.String())
+
+	_, _ = cw.Write([]byte(" world"))
+	assert.Equal(t, 11, cw.n)
+}
+
 func TestRenderForCobra_textAndTable(t *testing.T) {
 	var buf bytes.Buffer
 	renderForCobra(&buf, Result{

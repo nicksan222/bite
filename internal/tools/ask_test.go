@@ -51,3 +51,16 @@ func TestAsk_noAIClient(t *testing.T) {
 	}))
 	require.Error(t, err)
 }
+
+func TestAsImageAttachment_classifiesURLvsPath(t *testing.T) {
+	got := asImageAttachment("https://example.com/x.jpg")
+	assert.Equal(t, "https://example.com/x.jpg", got.URL)
+	assert.Empty(t, got.Path)
+
+	got = asImageAttachment("http://example.com/x.jpg")
+	assert.Equal(t, "http://example.com/x.jpg", got.URL)
+
+	got = asImageAttachment("/local/x.jpg")
+	assert.Equal(t, "/local/x.jpg", got.Path)
+	assert.Empty(t, got.URL)
+}

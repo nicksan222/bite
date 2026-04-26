@@ -105,6 +105,12 @@ func TestRunCheck_recordsFailure(t *testing.T) {
 	assert.Contains(t, sb.String(), "boom")
 }
 
+func TestSeverity_String(t *testing.T) {
+	assert.Equal(t, "hard", SeverityHard.String())
+	assert.Equal(t, "soft", SeveritySoft.String())
+	assert.Equal(t, "unknown", Severity(99).String())
+}
+
 func TestRunCheck_recordsSuccess(t *testing.T) {
 	var sb strings.Builder
 	ok := runCheck(context.Background(), &sb, Check{

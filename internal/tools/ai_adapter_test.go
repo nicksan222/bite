@@ -124,3 +124,8 @@ func TestRenderForAI_textPlusTable(t *testing.T) {
 	assert.Contains(t, out, "| X |")
 	assert.Contains(t, out, "| y |")
 }
+
+func TestRenderResultForChat_isExportedAlias(t *testing.T) {
+	r := Result{Text: "x", Table: &Table{Headers: []string{"H"}, Rows: [][]string{{"v"}}}}
+	assert.Equal(t, renderForAI(r), RenderResultForChat(r))
+}
