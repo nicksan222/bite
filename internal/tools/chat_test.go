@@ -15,6 +15,22 @@ func TestChatTool_isRegistered(t *testing.T) {
 	assert.True(t, tool.SkipSlash, "chat must opt out of /chat dispatch")
 }
 
+// TestChatTool_hiddenFromLiveAdapters checks the actual production registry,
+// not a synthetic fixture — confirms a regression that flips chat.SkipAI to
+// false would surface here even if every synthetic-tool test still passes.
+func TestChatTool_hiddenFromLiveAdapters(t *testing.T) {
+	for _, ai := range AITools(Deps{}) {
+		assert.NotEqual(t, "chat", ai.Name,
+			"chat must never appear in AITools — it'd let the model recursively launch chats")
+	}
+	out := Dispatch(context.Background(), Deps{}, "/chat")
+	require.Error(t, out.ParseError, "/chat must be unreachable from the slash dispatcher")
+
+	help := Dispatch(context.Background(), Deps{}, "/help")
+	assert.NotContains(t, help.Result.Text, "/chat ",
+		"/help must not advertise /chat (it would just error if invoked)")
+}
+
 func TestChatTool_resumeFlagSurfaces(t *testing.T) {
 	tool := MustGet("chat")
 	var found bool

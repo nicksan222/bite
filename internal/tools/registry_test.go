@@ -428,3 +428,13 @@ func TestValidate_defaultTypeMatch_passes(t *testing.T) {
 	}
 	assert.NoError(t, tt.validate())
 }
+
+// TestValidate_paramIntAcceptsUntypedIntDefault locks in the convenience that
+// `Default: 7` (untyped → Go-side int) works for ParamInt — without it, every
+// tool author would have to type their integer defaults as int64 or face a
+// validation panic at registration.
+func TestValidate_paramIntAcceptsUntypedIntDefault(t *testing.T) {
+	tt := noopTool("untyped_int_default")
+	tt.Params = []Param{{Name: "n", Type: ParamInt, Default: 42, Desc: "d"}}
+	assert.NoError(t, tt.validate())
+}
