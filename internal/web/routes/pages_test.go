@@ -165,6 +165,10 @@ func TestPages_mealsFormWiring(t *testing.T) {
 	got := string(body)
 	require.Contains(t, got, `hx-post="/htmx/tool/log_meal"`,
 		"meals form must post to the log_meal tool")
+	require.Contains(t, got, `hx-target="#log-result"`,
+		"meals form must target the log-result div, not swap into itself")
+	require.Contains(t, got, `event.detail.successful`,
+		"reset and refresh-dispatch must run only on success — a failed log should leave the typed values intact")
 	require.Contains(t, got, `dispatchEvent(new Event('refresh'))`,
 		"meals form must dispatch refresh after success so the Today card updates")
 	require.Contains(t, got, `refresh from:body`,
