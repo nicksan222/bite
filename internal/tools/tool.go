@@ -77,6 +77,11 @@ func (t Tool) Long() string {
 	return t.Description
 }
 
+// reservedToolNames are slash-command names the dispatcher itself owns and
+// must never be shadowed by a Tool. Currently just "help", which is the
+// built-in help dispatcher in slash_adapter.go.
+var reservedToolNames = map[string]struct{}{"help": {}}
+
 // validate checks invariants on a Tool definition. Returns a non-nil error
 // for any structural problem.
 func (t Tool) validate() error {
@@ -85,6 +90,9 @@ func (t Tool) validate() error {
 	}
 	if !isSnakeCase(t.Name) {
 		return fmt.Errorf("tool %q: Name must be lower_snake_case", t.Name)
+	}
+	if _, reserved := reservedToolNames[t.Name]; reserved {
+		return fmt.Errorf("tool %q: name is reserved by the slash dispatcher", t.Name)
 	}
 	if t.Summary == "" {
 		return fmt.Errorf("tool %q: empty Summary", t.Name)

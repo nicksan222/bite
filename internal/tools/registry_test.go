@@ -295,3 +295,9 @@ func TestValidate_emptyParamName_fails(t *testing.T) {
 	tt.Params = []Param{{Name: "", Type: ParamString}}
 	assert.Error(t, tt.validate())
 }
+
+func TestValidate_reservedName_fails(t *testing.T) {
+	// "help" is owned by the slash dispatcher — registering a tool with
+	// that name would silently shadow it from the user.
+	assert.Error(t, noopTool("help").validate())
+}
