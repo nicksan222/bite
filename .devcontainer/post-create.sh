@@ -12,11 +12,12 @@ sudo apt-get update
 sudo apt-get install -y --no-install-recommends sqlite3
 sudo rm -rf /var/lib/apt/lists/*
 
-echo "==> Installing Go tools (sqlc, goose, golangci-lint, goreleaser)..."
+echo "==> Installing Go tools (sqlc, goose, golangci-lint, goreleaser, air)..."
 go install github.com/sqlc-dev/sqlc/cmd/sqlc@latest
 go install github.com/pressly/goose/v3/cmd/goose@latest
 go install github.com/golangci/golangci-lint/cmd/golangci-lint@latest
 go install github.com/goreleaser/goreleaser/v2@latest
+go install github.com/air-verse/air@latest
 
 if [ -f go.mod ]; then
   echo "==> Resolving Go modules (go mod tidy)..."
@@ -34,3 +35,4 @@ echo "  cp .env.example .env && \$EDITOR .env"
 echo "  go run ./cmd/bite           # opens chat TUI"
 echo "  go run ./cmd/bite ask 'hi'  # one-shot"
 echo "  go run ./cmd/bite web       # serves the dashboard at http://127.0.0.1:8787"
+echo "  make web-dev                # serves the dashboard with live reload (air)"

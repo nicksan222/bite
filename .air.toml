@@ -1,0 +1,33 @@
+# air — live reload for `bite web` during local dev.
+#
+#   make web-dev      # invokes `air` with this config
+#   air               # equivalent if the Makefile is unavailable
+#
+# Watches every file extension listed in include_ext under the repo
+# (minus exclude_dir / exclude_regex), rebuilds ./cmd/bite on change,
+# and restarts the binary as `bite web`. send_interrupt + kill_delay
+# give SSE chat streams a graceful shutdown window before kill.
+
+root = "."
+tmp_dir = "tmp"
+
+[build]
+  cmd = "go build -o ./tmp/bite ./cmd/bite"
+  bin = "./tmp/bite"
+  args_bin = ["web"]
+  include_ext = ["go", "html", "css", "js"]
+  exclude_dir = ["tmp", "bin", "dist", ".git", ".claude", ".agents", "node_modules"]
+  exclude_regex = ["_test\\.go"]
+  delay = 200
+  stop_on_error = true
+  send_interrupt = true
+  kill_delay = "1s"
+
+[log]
+  time = false
+
+[color]
+  main = "magenta"
+  watcher = "cyan"
+  build = "yellow"
+  runner = "green"

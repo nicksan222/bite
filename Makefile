@@ -25,6 +25,10 @@ build: ## Build ./bin/bite
 	mkdir -p bin
 	go build -o bin/bite ./cmd/bite
 
+.PHONY: web-dev
+web-dev: ## Run `bite web` with live reload (requires air; install: go install github.com/air-verse/air@latest)
+	air
+
 .PHONY: test
 test: ## Run tests
 	go test -race ./...
@@ -78,5 +82,5 @@ docker: build ## Build local Docker image bite:dev
 
 .PHONY: clean
 clean: ## Remove build artifacts and local DB
-	rm -rf bin dist coverage.out
+	rm -rf bin dist tmp coverage.out
 	rm -f $(DB) $(DB)-journal
