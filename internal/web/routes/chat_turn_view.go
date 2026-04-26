@@ -7,10 +7,13 @@ import (
 
 // chatTurnTmpl is the HTML fragment hx-swapped into the transcript when
 // the user submits a turn. The user bubble is fully formed; the
-// assistant bubble has sse-connect bound, and htmx-ext-sse appends each
-// "delta" event into .chat-bubble. The "done" event closes the SSE
-// connection. The session cookie carries history forward, so neither
-// bubble needs hidden inputs.
+// assistant bubble has sse-connect bound, htmx-ext-sse appends each
+// "delta" event into .chat-bubble (sse-swap="delta" + hx-swap="beforeend"),
+// and the bubble's sse-close="done" attribute tells htmx-ext-sse to
+// shut the EventSource the moment a "done" event arrives. The
+// alert div catches "error" events for the same connection. The
+// session cookie carries history forward, so neither bubble needs
+// hidden inputs.
 var chatTurnTmpl = template.Must(template.New("chat-turn").Parse(
 	`<div class="chat chat-end" data-role="user">
 	<div class="chat-bubble chat-bubble-primary">{{.UserText}}</div>
