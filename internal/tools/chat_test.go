@@ -31,7 +31,6 @@ func TestRunChat_propagatesPrepareSessionError(t *testing.T) {
 	// resume=9999 against a fresh store can't be found; PrepareSession returns
 	// an error which runChat must propagate so the cobra layer can surface it.
 	deps := freshDeps(t)
-	deps.Model = "test-model"
 	tool := MustGet("chat")
 	_, err := tool.Run(context.Background(), deps, NewArgsForTool(tool, map[string]any{"resume": int64(9999)}))
 	require.Error(t, err)
@@ -49,7 +48,6 @@ func TestRunChat_failsFastWhenAIUnusable(t *testing.T) {
 	if cleanup != nil {
 		defer cleanup()
 	}
-	deps.Model = "test-model"
 	tool := MustGet("chat")
 	_, runErr := tool.Run(context.Background(), deps, NewArgsForTool(tool, nil))
 	require.Error(t, runErr)

@@ -46,7 +46,9 @@ func (s eventStreamer) Stream(_ context.Context, _ []ai.Message, _ ...ai.StreamO
 }
 
 // freshDeps spins up a fresh in-memory SQLite store, fixed clock, and UTC loc.
-// The store is closed via t.Cleanup.
+// The store is closed via t.Cleanup. Model is set to a sentinel string so
+// any tool that records it on a conversation/meal has something stable to
+// assert against without each test setting it manually.
 func freshDeps(t *testing.T) Deps {
 	t.Helper()
 	store, err := db.Open(context.Background(), ":memory:")
@@ -55,6 +57,7 @@ func freshDeps(t *testing.T) Deps {
 	fixed := time.Date(2026, 4, 26, 12, 0, 0, 0, time.UTC)
 	return Deps{
 		Store: store,
+		Model: "test-model",
 		Now:   func() time.Time { return fixed },
 		Loc:   time.UTC,
 	}
