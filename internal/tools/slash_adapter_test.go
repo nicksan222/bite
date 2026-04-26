@@ -62,6 +62,24 @@ func TestDispatch_quotedPositional(t *testing.T) {
 	})
 }
 
+func TestDispatch_quotedKeyedValue(t *testing.T) {
+	withCleanRegistry(t, func() {
+		var seen Args
+		Register(Tool{
+			Name: "say", Summary: "s", Description: "d",
+			Params: []Param{{Name: "msg", Type: ParamString}},
+			Run: func(_ context.Context, _ Deps, a Args) (Result, error) {
+				seen = a
+				return Result{Text: "ok"}, nil
+			},
+		})
+		out := Dispatch(context.Background(), Deps{}, `/say msg="hello world"`)
+		require.NoError(t, out.ParseError)
+		assert.Equal(t, "hello world", seen.String("msg"),
+			"quotes around a keyed value should preserve internal spaces")
+	})
+}
+
 func TestDispatch_keyedArgs(t *testing.T) {
 	withCleanRegistry(t, func() {
 		var seen Args
