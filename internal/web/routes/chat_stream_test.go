@@ -160,6 +160,32 @@ func TestChatStream_unconfigured(t *testing.T) {
 	require.Equal(t, http.StatusServiceUnavailable, resp.StatusCode)
 }
 
+// TestChatStream_forwardsStreamOpts proves the chat handler still
+// invokes Deps.StreamOpts() and threads the returned options into
+// ai.Streamer.Stream — the seam through which the chat tool wires up
+// tool-calls.
+func TestChatStream_forwardsStreamOpts(t *testing.T) {
+	streamer := &stubStreamer{deltas: []string{"ok"}, final: "ok"}
+	calls := 0
+	app := newApp(Deps{
+		AI: streamer,
+		StreamOpts: func() []ai.StreamOption {
+			calls++
+			return []ai.StreamOption{ai.WithSystemPrompt("be terse"), ai.WithSystemPrompt("be specific")}
+		},
+	})
+	resp, err := app.Test(postForm("/api/chat", map[string]string{"message": "hi"}))
+	require.NoError(t, err)
+	body, _ := io.ReadAll(resp.Body)
+	turnID := extractTurnID(t, string(body))
+
+	streamResp, err := app.Test(httptest.NewRequest(http.MethodGet, "/api/chat/stream/"+turnID, nil))
+	require.NoError(t, err)
+	_, _ = io.ReadAll(streamResp.Body)
+	require.Equal(t, 1, calls, "StreamOpts must be invoked exactly once per stream")
+	require.Equal(t, 2, streamer.gotOptCount, "every option StreamOpts returned must reach Stream")
+}
+
 // TestChatStream_handshakeErrorIs502 covers the rarer branch where
 // Stream() itself errors before a channel is opened — a 502 surfaces to
 // the EventSource, htmx-ext-sse fires htmx:sseError, and the user can
