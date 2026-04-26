@@ -3,6 +3,7 @@ package routes
 import (
 	"bufio"
 	"bytes"
+	"cmp"
 	"context"
 	"fmt"
 	"net/http"
@@ -154,12 +155,8 @@ func pumpStreamEvents(w *bufio.Writer, events <-chan ai.StreamEvent) string {
 			writeSSE(w, "error", ev.Err.Error())
 			return ""
 		case ev.Done:
-			final := ev.Final
-			if final == "" {
-				final = assembled.String()
-			}
 			writeSSE(w, "done", "")
-			return final
+			return cmp.Or(ev.Final, assembled.String())
 		case ev.Delta != "":
 			assembled.WriteString(ev.Delta)
 			writeSSE(w, "delta", ev.Delta)
