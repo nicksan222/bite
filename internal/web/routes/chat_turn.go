@@ -46,6 +46,9 @@ type turnStash struct {
 	pending map[string]pendingTurn
 }
 
+// stash records a pending turn under a fresh random ID and returns
+// that ID. Each call also prunes expired entries on the request path
+// so abandoned turns can't accumulate without a background sweeper.
 func (s *turnStash) stash(t pendingTurn) string {
 	s.mu.Lock()
 	defer s.mu.Unlock()
@@ -56,6 +59,10 @@ func (s *turnStash) stash(t pendingTurn) string {
 	return id
 }
 
+// pop returns the pending turn for id and removes the entry — even
+// when the entry has expired. Single-shot semantics: a refresh of the
+// SSE GET in the browser must not replay the conversation, so reading
+// always deletes.
 func (s *turnStash) pop(id string) (pendingTurn, bool) {
 	s.mu.Lock()
 	defer s.mu.Unlock()
@@ -70,6 +77,10 @@ func (s *turnStash) pop(id string) (pendingTurn, bool) {
 	return t, true
 }
 
+// pruneLocked drops every turn whose TTL has elapsed. The "Locked"
+// suffix marks the contract: callers must hold s.mu. Called from
+// stash() so eviction happens on the request path — no background
+// goroutine, no leaks if traffic stops.
 func (s *turnStash) pruneLocked() {
 	now := time.Now()
 	for id, t := range s.pending {
