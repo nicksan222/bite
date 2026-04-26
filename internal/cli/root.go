@@ -13,19 +13,17 @@ import (
 var (
 	buildVersion = "dev"
 	buildCommit  = "none"
-	buildDate    = "unknown"
 )
 
-// SetBuildInfo lets cmd/bite/main.go inject ldflag-baked identity.
-func SetBuildInfo(version, commit, date string) {
+// SetBuildInfo lets cmd/bite/main.go inject ldflag-baked identity. Empty
+// strings are ignored so a partial inject doesn't blank out a previously
+// set value.
+func SetBuildInfo(version, commit string) {
 	if version != "" {
 		buildVersion = version
 	}
 	if commit != "" {
 		buildCommit = commit
-	}
-	if date != "" {
-		buildDate = date
 	}
 }
 

@@ -8,15 +8,14 @@ import (
 )
 
 func TestSetBuildInfo_nonEmpty(t *testing.T) {
-	SetBuildInfo("1.2.3", "abc123", "2026-04-25")
+	SetBuildInfo("1.2.3", "abc123")
 	assert.Equal(t, "1.2.3", buildVersion)
 	assert.Equal(t, "abc123", buildCommit)
-	assert.Equal(t, "2026-04-25", buildDate)
 }
 
 func TestSetBuildInfo_emptySkips(t *testing.T) {
-	SetBuildInfo("before", "before", "before")
-	SetBuildInfo("", "", "")
+	SetBuildInfo("before", "before")
+	SetBuildInfo("", "")
 	assert.Equal(t, "before", buildVersion, "buildVersion should not change on empty input")
 }
 
