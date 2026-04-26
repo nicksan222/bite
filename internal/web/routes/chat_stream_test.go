@@ -22,11 +22,12 @@ import (
 // SSE pipeline without a real model. gotMessages and gotOptCount expose
 // what Stream observed so tests can assert the handler forwarded them.
 type stubStreamer struct {
-	deltas   []string
-	final    string
-	streamer error // returned synchronously from Stream — simulates handshake failure
-	tail     error // emitted as a terminal ev.Err — simulates mid-stream failure
+	deltas   []string // tokens to emit, in order, before the terminator
+	final    string   // value for ev.Final on the terminating Done event
+	streamer error    // returned synchronously from Stream — simulates handshake failure
+	tail     error    // emitted as a terminal ev.Err — simulates mid-stream failure
 
+	// What Stream observed; tests assert these to verify forwarding.
 	gotMessages []ai.Message
 	gotOptCount int
 }
