@@ -114,6 +114,17 @@ func TestAsk_attachesImages(t *testing.T) {
 	assert.Equal(t, "ok", res.Text)
 }
 
+func TestAsk_channelClosedWithoutDone(t *testing.T) {
+	// Some streamers may close the channel after deltas without ever emitting
+	// a Done event. runAsk should still return what it accumulated.
+	ctx := context.Background()
+	deps := freshDeps(t)
+	deps.AI = eventStreamer{events: []ai.StreamEvent{{Delta: "partial"}}}
+	res, err := MustGet("ask").Run(ctx, deps, NewArgs(map[string]any{"prompt": "hi"}))
+	require.NoError(t, err)
+	assert.Equal(t, "partial", res.Text)
+}
+
 func TestAsk_systemOverride(t *testing.T) {
 	ctx := context.Background()
 	deps := freshDeps(t)
