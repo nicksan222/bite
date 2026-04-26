@@ -23,10 +23,6 @@ func htmxTool(d Deps) fiber.Handler {
 			return jsonError(c, http.StatusServiceUnavailable, "tool invocation not configured")
 		}
 		name := c.Params("name")
-		if name == "" {
-			return jsonError(c, http.StatusBadRequest, "missing tool name")
-		}
-
 		raw := mergeArgs(c.Queries(), formArgs(c))
 
 		res, err := d.InvokeTool(c.Context(), name, raw)

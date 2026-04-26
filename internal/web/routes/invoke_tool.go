@@ -16,10 +16,6 @@ func invokeTool(d Deps) fiber.Handler {
 			return jsonError(c, http.StatusServiceUnavailable, "tool invocation not configured")
 		}
 		name := c.Params("name")
-		if name == "" {
-			return jsonError(c, http.StatusBadRequest, "missing tool name")
-		}
-
 		raw := map[string]any{}
 		if len(c.Body()) > 0 {
 			if err := c.Bind().Body(&raw); err != nil {
