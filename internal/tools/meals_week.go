@@ -56,10 +56,7 @@ func runMealsWeek(ctx context.Context, deps Deps, _ Args) (Result, error) {
 		}
 		writeTotalsLine(&sb, "  Day total", day)
 		sb.WriteByte('\n')
-		week.Kcal += day.Kcal
-		week.ProteinG += day.ProteinG
-		week.CarbsG += day.CarbsG
-		week.FatG += day.FatG
+		week.addTotals(day)
 	}
 	writeTotalsLine(&sb, "Week total", week)
 	return Result{Text: sb.String()}, nil

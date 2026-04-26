@@ -19,6 +19,16 @@ func (t *totals) add(m db.Meal) {
 	t.FatG += m.FatG
 }
 
+// addTotals folds another totals into the receiver. Used by meals_week to
+// accumulate the week sum from each day's totals without four boilerplate
+// field-by-field additions at the call site.
+func (t *totals) addTotals(o totals) {
+	t.Kcal += o.Kcal
+	t.ProteinG += o.ProteinG
+	t.CarbsG += o.CarbsG
+	t.FatG += o.FatG
+}
+
 // writeMealLine writes one meal as a bullet line: "- title: K kcal, Pg P, Cg C, Fg F".
 // indent is prepended to the bullet so the helper works for both flat lists and
 // daily groupings.
