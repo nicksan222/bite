@@ -62,8 +62,20 @@ type Tool struct {
 	// reports eating something — even casually."). Falls back to Description
 	// if empty.
 	Prompt string
-	Params []Param
-	Run    func(ctx context.Context, deps Deps, args Args) (Result, error)
+	// Examples are short, copy-pasteable usage lines that surface in
+	// `bite --help`. When non-empty, the rootCmd's example block is built
+	// from the registry — adding a tool with an Example makes it discoverable
+	// without editing cli/root.go.
+	Examples []Example
+	Params   []Param
+	Run      func(ctx context.Context, deps Deps, args Args) (Result, error)
+}
+
+// Example is one usage row for `bite --help`: the command line a user would
+// type plus a short description of what it does.
+type Example struct {
+	Cmd  string
+	Desc string
 }
 
 // Long returns the description used for cobra Long help. Prefers

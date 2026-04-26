@@ -13,6 +13,9 @@ func init() {
 No parameters needed.`,
 		Prompt: `Call meals_today when the user asks about today's intake, remaining budget,
 or progress toward a daily goal.`,
+		Examples: []Example{
+			{Cmd: "bite meals_today", Desc: "today's intake summary"},
+		},
 		Run: runMealsToday,
 	})
 }

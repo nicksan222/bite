@@ -16,6 +16,9 @@ result to the meal log. Equivalent to running analyze_meal followed by
 log_meal in one step.`,
 		Prompt: `Use log_meal_from_media when the user shares a photo, voice note, or video of
 a meal and wants it logged. Prefer log_meal for plain-text descriptions.`,
+		Examples: []Example{
+			{Cmd: `bite log_meal_from_media "lunch" --file plate.jpg`, Desc: "estimate from media + save"},
+		},
 		Params: []Param{
 			{Name: "text", Type: ParamString, Positional: true,
 				Desc: "Free-form text describing the meal."},

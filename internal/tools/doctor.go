@@ -18,6 +18,9 @@ func init() {
 		DescribeDynamic: doctorDescription,
 		Prompt: `Use doctor when the user reports something not working, asks "is bite set up?",
 or wants to verify the environment after a fresh install.`,
+		Examples: []Example{
+			{Cmd: "bite doctor --ping", Desc: "verify environment + model reachability"},
+		},
 		// Params are derived from the gates declared by registered checks.
 		// Adding a gated check (e.g. Gate: "verbose") makes --verbose appear
 		// on `bite doctor` automatically — no edits to this file required.

@@ -16,6 +16,9 @@ can from the description; leave unknown fields at 0.`,
 		Prompt: `Call log_meal whenever the user reports having eaten something — even casually
 ("had a salad", "just finished lunch"). Estimate kcal and macros from the
 description; leave unknown fields at 0.`,
+		Examples: []Example{
+			{Cmd: `bite log_meal "200g pasta with pesto"`, Desc: "log a meal from text"},
+		},
 		Params: []Param{
 			{Name: "title", Type: ParamString, Required: true, Positional: true,
 				Desc: "Short meal name (e.g. 'Chicken salad', 'Pasta bolognese')."},

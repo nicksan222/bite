@@ -17,6 +17,9 @@ func init() {
 with --image (repeatable, local paths or http(s) URLs).`,
 		Prompt: `Use ask sparingly — it bypasses chat memory and tools. Prefer normal chat
 turns for anything that needs context, tool calls, or follow-ups.`,
+		Examples: []Example{
+			{Cmd: `bite ask "kcal in 200g salmon?"`, Desc: "one-shot question"},
+		},
 		Params: []Param{
 			// prompt is positional but NOT Required: an image-only invocation
 			// ("bite ask --image meal.jpg") is valid; runAsk rejects the case

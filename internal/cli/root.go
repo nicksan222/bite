@@ -37,12 +37,9 @@ or video. Conversations live locally in SQLite.
 
 Set ANTHROPIC_API_KEY (or put it in .env) before running. See bite doctor
 for environment health checks.`,
-	Example: `  bite                                       # interactive chat (default)
-  bite log_meal "200g pasta with pesto"       # log a meal from text
-  bite log_meal_from_media "lunch" --file plate.jpg
-  bite meals_today                            # today's intake summary
-  bite ask "kcal in 200g salmon?"             # one-shot question
-  bite doctor --ping                          # verify environment + model reachability`,
+	// Example block is left empty — tools.RegisterCobra fills it from the
+	// Examples each tool declares, so adding a tool extends `bite --help`
+	// automatically.
 	SilenceUsage:  true,
 	SilenceErrors: true,
 	RunE: func(cmd *cobra.Command, _ []string) error {

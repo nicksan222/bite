@@ -25,10 +25,41 @@ func StaticDeps(d Deps) DepsProvider {
 // RegisterCobra adds one subcommand per registered tool to root. The
 // DepsProvider is called once per command invocation, so opening the DB or
 // AI client is deferred until a tool actually runs (`bite --help` is free).
+//
+// If root.Example is empty, RegisterCobra also fills it in from the
+// Examples on registered tools — adding a new tool with an Example makes
+// it discoverable in `bite --help` without editing root.go.
 func RegisterCobra(root *cobra.Command, provide DepsProvider) {
 	for _, t := range All() {
 		root.AddCommand(toCobraCommand(t, provide))
 	}
+	if root.Example == "" {
+		root.Example = renderExamples()
+	}
+}
+
+// renderExamples gathers Example rows from every registered tool and lays
+// them out as a padded "  cmd<spaces># desc" block matching cobra's default
+// example style.
+func renderExamples() string {
+	var rows []Example
+	for _, t := range All() {
+		rows = append(rows, t.Examples...)
+	}
+	if len(rows) == 0 {
+		return ""
+	}
+	width := 0
+	for _, r := range rows {
+		if l := len(r.Cmd); l > width {
+			width = l
+		}
+	}
+	var b strings.Builder
+	for _, r := range rows {
+		fmt.Fprintf(&b, "  %-*s  # %s\n", width, r.Cmd, r.Desc)
+	}
+	return strings.TrimRight(b.String(), "\n")
 }
 
 func toCobraCommand(t Tool, provide DepsProvider) *cobra.Command {
