@@ -1,16 +1,10 @@
 // Package cli wires the cobra command tree.
 //
-// Domain commands live in [internal/tools] — drop a file there and
-// `tools.RegisterCobra` mounts it on the root command automatically.
-// Runtime wiring (config, store, AI client, chat-launch flow) also lives
-// in tools, so this package stays a thin composition layer.
+// Every domain command — including chat — is a Tool registered in
+// [internal/tools]. `tools.RegisterCobra` mounts them on the root command
+// automatically. This package owns only the rootCmd itself plus Execute.
 //
-// This package only owns the things that aren't ordinary tools:
-//
-//   - root.go  — rootCmd + Execute (calls tools.RegisterCobra)
-//   - chat.go  — cobra wrapper that calls tools.RunChatTUI; here only
-//     because cobra needs the cmd registered with rootCmd at init time
-//
-// If you find yourself adding a third file here, it probably belongs in
-// internal/tools/ instead.
+// If you find yourself adding a second file here that defines a cobra
+// subcommand, it probably belongs in internal/tools/ as a registered Tool.
+// Use Tool.SkipAI / Tool.SkipSlash if the command is cobra-only.
 package cli

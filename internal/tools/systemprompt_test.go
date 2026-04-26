@@ -17,6 +17,11 @@ func TestRenderAppendix_listsEveryTool(t *testing.T) {
 	out := RenderAppendix()
 	assert.Contains(t, out, "## Available tools")
 	for _, tool := range All() {
+		if tool.SkipAI {
+			// Cobra-only tools (chat) are deliberately omitted — the model
+			// can't usefully call them.
+			continue
+		}
 		assert.Contains(t, out, tool.Name, "appendix should mention %q", tool.Name)
 		assert.Contains(t, out, tool.Summary, "appendix should mention %q summary", tool.Name)
 	}

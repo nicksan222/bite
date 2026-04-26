@@ -17,6 +17,10 @@ type Deps struct {
 	// AI is the streaming model client. Required for tools that send a
 	// prompt (analyze_meal, log_meal_from_media, ask).
 	AI ai.Streamer
+	// Model is the configured Claude model name (e.g. "claude-sonnet-4-6").
+	// Stored on every conversation row by PrepareSession so resumes know
+	// which model produced each turn. Empty in tests that bypass cfg.
+	Model string
 	// Now is an injectable clock. Tests pass a fixed time; production leaves
 	// it nil so NowOrDefault() returns time.Now.
 	Now func() time.Time

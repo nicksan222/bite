@@ -58,6 +58,7 @@ func CobraDepsProvider(ctx context.Context) (Deps, func(), error) {
 	return Deps{
 		Store:        store,
 		AI:           lazyAI{cfg: cfg},
+		Model:        cfg.Model,
 		OpenAIAPIKey: cfg.OpenAIAPIKey,
 	}, cleanup, nil
 }

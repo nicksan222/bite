@@ -13,10 +13,9 @@ import (
 )
 
 // RunChatTUI is the full chat-launch flow: load config, open store, build the
-// AI client, prepare a session (fresh or resumed), wire the registry into
-// stream options + slash dispatch, and run the bubbletea program. Centralised
-// here so cli/chat.go (and any future entry point — daemon, REST mode, …)
-// stay thin one-line callers.
+// AI client, then run the bubbletea program. Used by cli/root.go's no-arg
+// `bite` invocation. The chat Tool's Run uses RunChatWithDeps directly so
+// cobra-built Deps (already containing store + lazy AI) are reused.
 func RunChatTUI(ctx context.Context, resumeID int64) error {
 	cfg, err := LoadConfig()
 	if err != nil {
@@ -31,14 +30,26 @@ func RunChatTUI(ctx context.Context, resumeID int64) error {
 	if err != nil {
 		return err
 	}
-	convID, history, err := PrepareSession(ctx, store, cfg.Model, resumeID)
+	deps := Deps{
+		Store:        store,
+		AI:           client,
+		Model:        cfg.Model,
+		OpenAIAPIKey: cfg.OpenAIAPIKey,
+	}
+	return RunChatWithDeps(ctx, deps, resumeID)
+}
+
+// RunChatWithDeps is the inner chat-launcher: given a fully-populated Deps
+// (Store, AI, Model required), prepare a session and run the TUI. Splitting
+// this out lets the chat Tool reuse the cobra-adapter's already-built deps
+// instead of re-opening the store.
+func RunChatWithDeps(ctx context.Context, deps Deps, resumeID int64) error {
+	convID, history, err := PrepareSession(ctx, deps.Store, deps.Model, resumeID)
 	if err != nil {
 		return err
 	}
-
-	deps := Deps{Store: store, AI: client, OpenAIAPIKey: cfg.OpenAIAPIKey}
-	persist := NewChatPersister(store, convID, len(history) > 0)
-	prog := tui.New(ctx, client, persist, history,
+	persist := NewChatPersister(deps.Store, convID, len(history) > 0)
+	prog := tui.New(ctx, deps.AI, persist, history,
 		ChatStreamOptions(deps),
 		tui.WithSlashHandler(NewSlashHandler(deps)))
 	_, err = prog.Run()
