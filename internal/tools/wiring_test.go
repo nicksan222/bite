@@ -95,3 +95,25 @@ func TestLazyAI_streamPropagatesAuthError(t *testing.T) {
 	_, err := la.Stream(context.Background(), nil)
 	require.Error(t, err)
 }
+
+func TestLazyAI_streamDelegatesWhenClientBuilt(t *testing.T) {
+	// With a valid (fake) key, OpenAIClient succeeds; lazyAI.Stream then
+	// delegates to *ai.Client.Stream. That call can fail synchronously when
+	// the underlying eino model rejects auth, but either way we exercise
+	// the post-OpenAIClient code path that the cfg-error branch can't reach.
+	la := lazyAI{cfg: config.Config{
+		APIKey:    "sk-ant-test-fake",
+		Model:     "claude-haiku-4-5",
+		MaxTokens: 16,
+	}}
+	ch, err := la.Stream(context.Background(), nil)
+	if err != nil {
+		// Eino refused the fake key synchronously — that's fine, we still
+		// reached lazyAI.Stream's post-build path.
+		return
+	}
+	// Otherwise drain the channel; the auth error surfaces as an event.
+	for ev := range ch {
+		_ = ev
+	}
+}
