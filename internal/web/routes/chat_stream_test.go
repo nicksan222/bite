@@ -157,10 +157,7 @@ func TestChatTurn_idIsSingleUse(t *testing.T) {
 	require.NoError(t, err)
 	require.Equal(t, http.StatusOK, second.StatusCode, "stream endpoint always returns 200; the failure rides as an SSE error event")
 	body2, _ := io.ReadAll(second.Body)
-	got2 := string(body2)
-	require.Contains(t, got2, "event: error")
-	require.Contains(t, got2, "turn expired or not found")
-	require.Contains(t, got2, "event: done", "second-pop path must still terminate cleanly")
+	requireSSEErrorAndDone(t, string(body2), "turn expired or not found")
 }
 
 // TestChatTurn_unknownIdYieldsSSEError exercises the cold path: a GET
@@ -174,8 +171,7 @@ func TestChatTurn_unknownIdYieldsSSEError(t *testing.T) {
 	require.Equal(t, http.StatusOK, resp.StatusCode)
 	require.Equal(t, "text/event-stream", resp.Header.Get("Content-Type"))
 	body, _ := io.ReadAll(resp.Body)
-	require.Contains(t, string(body), "event: error")
-	require.Contains(t, string(body), "event: done")
+	requireSSEErrorAndDone(t, string(body), "")
 }
 
 // TestChatStream_unconfiguredYieldsSSEError covers the AI-not-configured
@@ -188,11 +184,7 @@ func TestChatStream_unconfiguredYieldsSSEError(t *testing.T) {
 	require.NoError(t, err)
 	require.Equal(t, http.StatusOK, resp.StatusCode)
 	body, _ := io.ReadAll(resp.Body)
-	got := string(body)
-	require.Contains(t, got, "event: error")
-	require.Contains(t, got, "AI not configured")
-	require.Contains(t, got, "event: done",
-		"every error path must terminate with a done event so the EventSource closes cleanly")
+	requireSSEErrorAndDone(t, string(body), "AI not configured")
 }
 
 // TestChatStream_forwardsStreamOpts proves the chat handler still
@@ -236,10 +228,7 @@ func TestChatStream_handshakeErrorYieldsSSEError(t *testing.T) {
 	require.NoError(t, err)
 	require.Equal(t, http.StatusOK, streamResp.StatusCode)
 	streamBody, _ := io.ReadAll(streamResp.Body)
-	got := string(streamBody)
-	require.Contains(t, got, "event: error")
-	require.Contains(t, got, "upstream down")
-	require.Contains(t, got, "event: done", "handshake-failure path must still terminate cleanly")
+	requireSSEErrorAndDone(t, string(streamBody), "upstream down")
 }
 
 // TestChatTurn_sessionAccumulates: the second turn's history must
@@ -292,6 +281,20 @@ func runChatTurn(t *testing.T, app *fiber.App, cookie *http.Cookie, message stri
 
 // extractTurnID pulls the 32-char hex turn ID out of an HTML response.
 var turnIDPattern = regexp.MustCompile(chatStreamPathPrefix + `([0-9a-f]{32})`)
+
+// requireSSEErrorAndDone asserts the body carries an SSE error event
+// (optionally with a specific data substring) followed by a terminating
+// done event — the contract every chat-stream failure path emits so
+// htmx-ext-sse closes the EventSource cleanly via sse-close="done".
+func requireSSEErrorAndDone(t *testing.T, body, dataSubstr string) {
+	t.Helper()
+	require.Contains(t, body, "event: error")
+	if dataSubstr != "" {
+		require.Contains(t, body, "data: "+dataSubstr)
+	}
+	require.Contains(t, body, "event: done",
+		"every error path must terminate with a done event so the EventSource closes cleanly")
+}
 
 func extractTurnID(t *testing.T, body string) string {
 	t.Helper()
