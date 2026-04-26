@@ -90,6 +90,9 @@ func TestHTMX_unconfiguredDepsReturnsHTML(t *testing.T) {
 	require.NoError(t, err)
 	require.Equal(t, http.StatusServiceUnavailable, resp.StatusCode)
 	require.Contains(t, resp.Header.Get("Content-Type"), "text/html")
+	body, _ := io.ReadAll(resp.Body)
+	require.Contains(t, string(body), `alert alert-error`)
+	require.Contains(t, string(body), "tool invocation not configured")
 }
 
 func TestHTMX_tool_endpoint(t *testing.T) {
