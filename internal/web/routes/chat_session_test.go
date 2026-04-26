@@ -10,12 +10,13 @@ import (
 	"github.com/nicksan222/bite/internal/ai"
 )
 
-// TestSessionStore_cookieSecuritySettings pins the chat-session cookie's
-// security flags. HttpOnly so JS can't exfiltrate the session ID,
-// SameSite=Lax so cross-site POSTs don't carry it (CSRF guard while
-// still allowing top-level navigation), and Path=/ because every chat
-// route shares the cookie. The Secure flag is exercised separately
-// because it depends on the request scheme.
+// TestSessionStore_cookieSecuritySettings pins the chat-session
+// cookie's full attribute set in one place: HttpOnly so JS can't
+// exfiltrate the session ID, SameSite=Lax so cross-site POSTs don't
+// carry it (CSRF guard while still allowing top-level navigation),
+// Path=/ because every chat route shares the cookie, Secure mirrors
+// the request scheme (false on HTTP test requests, would be true on
+// HTTPS), and MaxAge matches the server-side TTL.
 func TestSessionStore_cookieSecuritySettings(t *testing.T) {
 	app := newApp(Deps{AI: &stubStreamer{}})
 	resp, err := app.Test(postForm("/api/chat", map[string]string{"message": "hi"}))
