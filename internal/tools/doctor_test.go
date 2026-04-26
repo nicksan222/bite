@@ -26,12 +26,19 @@ func TestChecks_returnsRegistered(t *testing.T) {
 }
 
 func TestRegisterCheck_panicsOnInvalid(t *testing.T) {
+	noopRun := func(_ context.Context) (string, error) { return "", nil }
+
 	assert.Panics(t, func() { RegisterCheck(Check{Name: ""}) })
-	assert.Panics(t, func() { RegisterCheck(Check{Name: "x", Run: nil}) })
+	assert.Panics(t, func() { RegisterCheck(Check{Name: "x", Desc: "d", Run: nil}) },
+		"nil Run must panic")
+	assert.Panics(t, func() { RegisterCheck(Check{Name: "x", Run: noopRun}) },
+		"empty Desc must panic so doctor help never shows a blank entry")
+	assert.Panics(t, func() {
+		RegisterCheck(Check{Name: "x", Desc: "d", Severity: Severity(42), Run: noopRun})
+	}, "invalid Severity must panic — only Hard or Soft are meaningful")
 	assert.Panics(t, func() {
 		RegisterCheck(Check{
-			Name: "x", Gate: "Bad-Gate",
-			Run: func(_ context.Context) (string, error) { return "", nil },
+			Name: "x", Desc: "d", Gate: "Bad-Gate", Run: noopRun,
 		})
 	}, "Gate must reject non-snake_case names so the auto-derived flag stays valid")
 }
@@ -57,7 +64,10 @@ func snapshotCheckRegistry(t *testing.T) {
 func TestRegisterCheck_panicsOnDuplicate(t *testing.T) {
 	snapshotCheckRegistry(t)
 	assert.Panics(t, func() {
-		RegisterCheck(Check{Name: "config: load", Run: func(_ context.Context) (string, error) { return "", nil }})
+		RegisterCheck(Check{
+			Name: "config: load", Desc: "duplicate name",
+			Run: func(_ context.Context) (string, error) { return "", nil },
+		})
 	})
 }
 
@@ -199,11 +209,11 @@ func TestGateParams_dedupesSharedGate(t *testing.T) {
 	// --<gate> flag, not two duplicates.
 	snapshotCheckRegistry(t)
 	RegisterCheck(Check{
-		Name: "alpha", Severity: SeverityHard, Gate: "shared",
+		Name: "alpha", Desc: "first shared-gate check", Severity: SeverityHard, Gate: "shared",
 		Run: func(_ context.Context) (string, error) { return "", nil },
 	})
 	RegisterCheck(Check{
-		Name: "beta", Severity: SeverityHard, Gate: "shared",
+		Name: "beta", Desc: "second shared-gate check", Severity: SeverityHard, Gate: "shared",
 		Run: func(_ context.Context) (string, error) { return "", nil },
 	})
 
@@ -253,11 +263,12 @@ func TestSeverity_String(t *testing.T) {
 	assert.Equal(t, "unknown", Severity(99).String())
 }
 
-func TestDescribeCheck_fallsBackToName(t *testing.T) {
+func TestDescribeCheck_rendersNameDescAndGate(t *testing.T) {
 	var b strings.Builder
-	describeCheck(&b, Check{Name: "tagged", Gate: "ping"})
+	describeCheck(&b, Check{Name: "tagged", Desc: "verifies tagged thing", Gate: "ping"})
 	out := b.String()
 	assert.Contains(t, out, "tagged")
+	assert.Contains(t, out, "verifies tagged thing")
 	assert.Contains(t, out, "(only with --ping)")
 }
 

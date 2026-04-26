@@ -46,8 +46,14 @@ func (c Check) validate() error {
 	if c.Name == "" {
 		return fmt.Errorf("check: empty Name")
 	}
+	if c.Desc == "" {
+		return fmt.Errorf("check %q: empty Desc", c.Name)
+	}
 	if c.Run == nil {
 		return fmt.Errorf("check %q: nil Run", c.Name)
+	}
+	if c.Severity != SeverityHard && c.Severity != SeveritySoft {
+		return fmt.Errorf("check %q: invalid Severity %d", c.Name, c.Severity)
 	}
 	// Gate becomes a Bool flag on the doctor tool — auto-derived in
 	// gateParams. Reject names that wouldn't survive Param validation.

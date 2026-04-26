@@ -78,11 +78,7 @@ func describeCheck(b *strings.Builder, c Check) {
 	if c.Gate != "" {
 		suffix = fmt.Sprintf("  (only with --%s)", c.Gate)
 	}
-	desc := c.Desc
-	if desc == "" {
-		desc = c.Name
-	}
-	fmt.Fprintf(b, "  • %s — %s%s\n", c.Name, desc, suffix)
+	fmt.Fprintf(b, "  • %s — %s%s\n", c.Name, c.Desc, suffix)
 }
 
 func runDoctor(ctx context.Context, _ Deps, args Args) (Result, error) {
