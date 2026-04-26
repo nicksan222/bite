@@ -140,8 +140,7 @@
       signal,
     });
     if (!res.ok || !res.body) {
-      const body = await res.text().catch(() => "");
-      throw new Error(body || "chat failed (" + res.status + ")");
+      throw new Error(await readErrorMessage(res));
     }
     const reader = res.body.getReader();
     const decoder = new TextDecoder();
@@ -161,6 +160,21 @@
         else if (ev.event === "error") throw new Error((ev.data && ev.data.message) || "chat error");
       }
     }
+  }
+
+  // readErrorMessage extracts the user-facing string from a non-OK chat
+  // response. The server returns the {"error": "..."} envelope so the
+  // user sees the prose, not the raw JSON.
+  async function readErrorMessage(res) {
+    const body = await res.text().catch(() => "");
+    if (!body) return "chat failed (" + res.status + ")";
+    try {
+      const parsed = JSON.parse(body);
+      if (parsed && typeof parsed.error === "string") return parsed.error;
+    } catch {
+      // not JSON — fall through and surface the raw body
+    }
+    return body;
   }
 
   function parseSSE(block) {
