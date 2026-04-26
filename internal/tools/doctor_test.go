@@ -27,7 +27,12 @@ func TestRegisterCheck_panicsOnInvalid(t *testing.T) {
 	assert.Panics(t, func() { RegisterCheck(Check{Name: "x", Run: nil}) })
 }
 
-func TestRegisterCheck_panicsOnDuplicate(t *testing.T) {
+// snapshotCheckRegistry preserves the live check registry around a test
+// that mutates it (e.g. via RegisterCheck). Restores both the slice and the
+// dedup set on cleanup so the rest of the package's tests see the original
+// shape.
+func snapshotCheckRegistry(t *testing.T) {
+	t.Helper()
 	checkMu.Lock()
 	saved := append([]Check(nil), checks...)
 	savedSet := maps.Clone(checked)
@@ -38,7 +43,10 @@ func TestRegisterCheck_panicsOnDuplicate(t *testing.T) {
 		checked = savedSet
 		checkMu.Unlock()
 	})
+}
 
+func TestRegisterCheck_panicsOnDuplicate(t *testing.T) {
+	snapshotCheckRegistry(t)
 	assert.Panics(t, func() {
 		RegisterCheck(Check{Name: "config: load", Run: func(_ context.Context) (string, error) { return "", nil }})
 	})
