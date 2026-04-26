@@ -1,9 +1,11 @@
 package routes
 
 import (
+	"encoding/json"
 	"io"
 	"net/http"
 	"net/http/httptest"
+	"regexp"
 	"strings"
 	"testing"
 
@@ -83,17 +85,35 @@ func TestPages_activeNavMarked(t *testing.T) {
 // htmx-config meta tag so 4xx/5xx responses still swap into their
 // target. Without this, every htmlError our HTMX surfaces produce
 // (empty chat message, validation failures, AI not configured)
-// would silently drop into htmx:responseError and the user would
-// see nothing happen.
+// would silently drop into htmx:responseError and the user would see
+// nothing happen. We parse the meta tag's JSON so the assertion
+// survives a key-order reshuffle but still locks in the contract.
 func TestPages_htmxConfigEnables4xxSwap(t *testing.T) {
 	app := newApp(Deps{})
 	resp, err := app.Test(httptest.NewRequest(http.MethodGet, "/", nil))
 	require.NoError(t, err)
 	body, _ := io.ReadAll(resp.Body)
-	require.Contains(t, string(body), `name="htmx-config"`,
-		"layout must declare htmx-config")
-	require.Contains(t, string(body), `"[45]..","swap":true`,
-		"4xx/5xx responses must be swap-able so error alerts surface")
+
+	m := regexp.MustCompile(`<meta name="htmx-config" content='([^']+)'>`).FindStringSubmatch(string(body))
+	require.NotNil(t, m, "layout must declare a htmx-config meta tag")
+
+	var cfg struct {
+		ResponseHandling []struct {
+			Code  string `json:"code"`
+			Swap  bool   `json:"swap"`
+			Error bool   `json:"error,omitempty"`
+		} `json:"responseHandling"`
+	}
+	require.NoError(t, json.Unmarshal([]byte(m[1]), &cfg))
+
+	var got4xx bool
+	for _, rule := range cfg.ResponseHandling {
+		if rule.Code == "[45].." {
+			got4xx = rule.Swap
+			break
+		}
+	}
+	require.True(t, got4xx, "the [45].. rule must have swap:true so error alerts surface")
 }
 
 // TestPages_toolsListsRegistry asserts the tools page renders names
