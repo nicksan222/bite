@@ -52,14 +52,8 @@ jobs:
         run: go build -v ./...
 
       - name: Test
-        run: |
-          go test -race -coverprofile=coverage.out -covermode=atomic \
-            ./internal/ai/... \
-            ./internal/cli/... \
-            ./internal/config/... \
-            ./internal/db \
-            ./internal/media/... \
-            ./internal/tui/...
+        shell: bash
+        run: go test -race -coverprofile=coverage.out -covermode=atomic ./...
 
       - name: Upload coverage
         if: runner.os == 'Linux'

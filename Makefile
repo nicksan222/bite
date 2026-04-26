@@ -31,13 +31,7 @@ test: ## Run tests
 
 .PHONY: cover
 cover: ## Run tests with coverage
-	go test -race -coverprofile=coverage.out -covermode=atomic \
-		./internal/ai/... \
-		./internal/cli/... \
-		./internal/config/... \
-		./internal/db \
-		./internal/media/... \
-		./internal/tui/...
+	go test -race -coverprofile=coverage.out -covermode=atomic ./...
 	go tool cover -func=coverage.out
 
 .PHONY: lint
