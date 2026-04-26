@@ -27,10 +27,13 @@ const turnTTL = 30 * time.Second
 // stream handler needs (history + the user's new turn + which session
 // to update on completion); the GET pops it.
 type pendingTurn struct {
+	// sessionID, history, userMsg are the handoff payload.
 	sessionID string
 	history   []ai.Message
 	userMsg   string
-	expires   time.Time
+
+	// expires is the stash-management metadata stamped by stash().
+	expires time.Time
 }
 
 // turnStore is the per-process map of pending turns. Each entry is read
