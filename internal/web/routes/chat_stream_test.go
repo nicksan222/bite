@@ -66,6 +66,11 @@ func TestChatStart_emptyMessage(t *testing.T) {
 	resp, err := app.Test(postForm("/api/chat", map[string]string{"message": "   "}))
 	require.NoError(t, err)
 	require.Equal(t, http.StatusBadRequest, resp.StatusCode)
+	require.Contains(t, resp.Header.Get("Content-Type"), "text/html",
+		"validation errors must render as HTML alerts so the form's hx-target shows them")
+	body, _ := io.ReadAll(resp.Body)
+	require.Contains(t, string(body), "empty message")
+	require.Contains(t, string(body), `alert alert-error`)
 }
 
 func TestChatStart_unconfigured(t *testing.T) {
