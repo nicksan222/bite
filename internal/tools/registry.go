@@ -2,7 +2,8 @@ package tools
 
 import (
 	"fmt"
-	"sort"
+	"maps"
+	"slices"
 	"sync"
 )
 
@@ -31,11 +32,7 @@ func Register(t Tool) {
 func All() []Tool {
 	regMu.RLock()
 	defer regMu.RUnlock()
-	names := make([]string, 0, len(reg))
-	for n := range reg {
-		names = append(names, n)
-	}
-	sort.Strings(names)
+	names := slices.Sorted(maps.Keys(reg))
 	out := make([]Tool, 0, len(names))
 	for _, n := range names {
 		out = append(out, reg[n])
