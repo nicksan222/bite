@@ -116,6 +116,15 @@ func (t Tool) validate() error {
 		return fmt.Errorf("tool %q: nil Run", t.Name)
 	}
 
+	for i, ex := range t.Examples {
+		if !strings.HasPrefix(ex.Cmd, "bite ") {
+			return fmt.Errorf("tool %q: example[%d].Cmd %q must start with 'bite '", t.Name, i, ex.Cmd)
+		}
+		if ex.Desc == "" {
+			return fmt.Errorf("tool %q: example[%d].Desc is empty", t.Name, i)
+		}
+	}
+
 	seen := make(map[string]struct{}, len(t.Params))
 	sawOptionalPositional := false
 	for _, p := range t.Params {

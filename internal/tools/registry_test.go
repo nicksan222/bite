@@ -330,6 +330,18 @@ func TestTool_Long_noDynamicReturnsDescription(t *testing.T) {
 	assert.Equal(t, "static", tt.Long())
 }
 
+func TestValidate_exampleNotPrefixedWithBite_fails(t *testing.T) {
+	tt := noopTool("ex")
+	tt.Examples = []Example{{Cmd: "ex --help", Desc: "no bite prefix"}}
+	assert.Error(t, tt.validate())
+}
+
+func TestValidate_exampleEmptyDesc_fails(t *testing.T) {
+	tt := noopTool("ex")
+	tt.Examples = []Example{{Cmd: "bite ex --help", Desc: ""}}
+	assert.Error(t, tt.validate())
+}
+
 func TestValidate_requiredWithDefault_fails(t *testing.T) {
 	// Required + Default is contradictory — the default is unreachable.
 	tt := noopTool("contradict")
