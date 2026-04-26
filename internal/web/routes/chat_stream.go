@@ -93,7 +93,13 @@ func setSSEHeaders(c fiber.Ctx) {
 // pumpStreamEvents drains the model channel into SSE events. Returns
 // when the channel closes naturally, on a terminal Done/Err event, or
 // when a write to w fails (which means the client disconnected).
+//
+// The deferred Flush guarantees the terminal "done"/"error" event
+// reaches the wire — without it we would rely on the
+// SendStreamWriter caller flushing on closure return, which is true
+// today but an implementation detail of fiber.
 func pumpStreamEvents(w *bufio.Writer, events <-chan ai.StreamEvent) {
+	defer func() { _ = w.Flush() }()
 	for ev := range events {
 		switch {
 		case ev.Err != nil:
