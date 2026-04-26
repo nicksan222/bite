@@ -91,7 +91,7 @@ func TestChatStart_returnsBubblesWithSSEConnect(t *testing.T) {
 	require.Contains(t, got, `chat chat-start`)
 	require.Contains(t, got, `hi there`)
 	require.Contains(t, got, `hx-ext="sse"`)
-	require.Regexp(t, regexp.MustCompile(`sse-connect="/api/chat/stream/[0-9a-f]{32}"`), got)
+	require.Regexp(t, regexp.MustCompile(`sse-connect="`+chatStreamPathPrefix+`[0-9a-f]{32}"`), got)
 }
 
 // TestChatTurn_lifecycle drives the full POST → SSE round-trip: the
@@ -107,7 +107,7 @@ func TestChatTurn_lifecycle(t *testing.T) {
 	body, _ := io.ReadAll(resp.Body)
 	turnID := extractTurnID(t, string(body))
 
-	resp, err = app.Test(httptest.NewRequest(http.MethodGet, "/api/chat/stream/"+turnID, nil))
+	resp, err = app.Test(httptest.NewRequest(http.MethodGet, chatStreamPathPrefix+turnID, nil))
 	require.NoError(t, err)
 	require.Equal(t, http.StatusOK, resp.StatusCode)
 	require.Equal(t, "text/event-stream", resp.Header.Get("Content-Type"))
@@ -132,12 +132,12 @@ func TestChatTurn_idIsSingleUse(t *testing.T) {
 	body, _ := io.ReadAll(resp.Body)
 	turnID := extractTurnID(t, string(body))
 
-	first, err := app.Test(httptest.NewRequest(http.MethodGet, "/api/chat/stream/"+turnID, nil))
+	first, err := app.Test(httptest.NewRequest(http.MethodGet, chatStreamPathPrefix+turnID, nil))
 	require.NoError(t, err)
 	require.Equal(t, http.StatusOK, first.StatusCode)
 	_, _ = io.ReadAll(first.Body)
 
-	second, err := app.Test(httptest.NewRequest(http.MethodGet, "/api/chat/stream/"+turnID, nil))
+	second, err := app.Test(httptest.NewRequest(http.MethodGet, chatStreamPathPrefix+turnID, nil))
 	require.NoError(t, err)
 	require.Equal(t, http.StatusOK, second.StatusCode, "stream endpoint always returns 200; the failure rides as an SSE error event")
 	body2, _ := io.ReadAll(second.Body)
@@ -151,7 +151,7 @@ func TestChatTurn_idIsSingleUse(t *testing.T) {
 // bubble can surface the failure rather than getting stuck.
 func TestChatTurn_unknownIdYieldsSSEError(t *testing.T) {
 	app := newApp(Deps{AI: &stubStreamer{}})
-	resp, err := app.Test(httptest.NewRequest(http.MethodGet, "/api/chat/stream/deadbeef", nil))
+	resp, err := app.Test(httptest.NewRequest(http.MethodGet, chatStreamPathPrefix+"deadbeef", nil))
 	require.NoError(t, err)
 	require.Equal(t, http.StatusOK, resp.StatusCode)
 	require.Equal(t, "text/event-stream", resp.Header.Get("Content-Type"))
@@ -165,7 +165,7 @@ func TestChatTurn_unknownIdYieldsSSEError(t *testing.T) {
 // asst bubble, plus a clean done.
 func TestChatStream_unconfiguredYieldsSSEError(t *testing.T) {
 	app := newApp(Deps{})
-	resp, err := app.Test(httptest.NewRequest(http.MethodGet, "/api/chat/stream/whatever", nil))
+	resp, err := app.Test(httptest.NewRequest(http.MethodGet, chatStreamPathPrefix+"whatever", nil))
 	require.NoError(t, err)
 	require.Equal(t, http.StatusOK, resp.StatusCode)
 	body, _ := io.ReadAll(resp.Body)
@@ -192,7 +192,7 @@ func TestChatStream_forwardsStreamOpts(t *testing.T) {
 	body, _ := io.ReadAll(resp.Body)
 	turnID := extractTurnID(t, string(body))
 
-	streamResp, err := app.Test(httptest.NewRequest(http.MethodGet, "/api/chat/stream/"+turnID, nil))
+	streamResp, err := app.Test(httptest.NewRequest(http.MethodGet, chatStreamPathPrefix+turnID, nil))
 	require.NoError(t, err)
 	_, _ = io.ReadAll(streamResp.Body)
 	require.Equal(t, 1, calls, "StreamOpts must be invoked exactly once per stream")
@@ -210,7 +210,7 @@ func TestChatStream_handshakeErrorYieldsSSEError(t *testing.T) {
 	body, _ := io.ReadAll(resp.Body)
 	turnID := extractTurnID(t, string(body))
 
-	streamResp, err := app.Test(httptest.NewRequest(http.MethodGet, "/api/chat/stream/"+turnID, nil))
+	streamResp, err := app.Test(httptest.NewRequest(http.MethodGet, chatStreamPathPrefix+turnID, nil))
 	require.NoError(t, err)
 	require.Equal(t, http.StatusOK, streamResp.StatusCode)
 	streamBody, _ := io.ReadAll(streamResp.Body)
@@ -256,7 +256,7 @@ func runChatTurn(t *testing.T, app *fiber.App, cookie *http.Cookie, message stri
 	body, _ := io.ReadAll(resp.Body)
 	turnID := extractTurnID(t, string(body))
 
-	streamResp, err := app.Test(httptest.NewRequest(http.MethodGet, "/api/chat/stream/"+turnID, nil))
+	streamResp, err := app.Test(httptest.NewRequest(http.MethodGet, chatStreamPathPrefix+turnID, nil))
 	require.NoError(t, err)
 	_, _ = io.ReadAll(streamResp.Body)
 
@@ -267,7 +267,7 @@ func runChatTurn(t *testing.T, app *fiber.App, cookie *http.Cookie, message stri
 }
 
 // extractTurnID pulls the 32-char hex turn ID out of an HTML response.
-var turnIDPattern = regexp.MustCompile(`/api/chat/stream/([0-9a-f]{32})`)
+var turnIDPattern = regexp.MustCompile(chatStreamPathPrefix + `([0-9a-f]{32})`)
 
 func extractTurnID(t *testing.T, body string) string {
 	t.Helper()

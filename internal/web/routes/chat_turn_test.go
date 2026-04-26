@@ -45,7 +45,7 @@ func TestRenderChatTurn_structure(t *testing.T) {
 	got := string(html)
 	require.Contains(t, got, `chat chat-end`)
 	require.Contains(t, got, `chat chat-start`)
-	require.Contains(t, got, `sse-connect="/api/chat/stream/turn123"`)
+	require.Contains(t, got, `sse-connect="`+chatStreamPathPrefix+`turn123"`)
 	require.Contains(t, got, `sse-swap="delta"`)
 	require.Contains(t, got, `sse-swap="error"`)
 }
