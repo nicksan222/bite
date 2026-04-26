@@ -140,6 +140,10 @@ func TestPages_chatFormWiring(t *testing.T) {
 		"chat form must append (not replace) so prior turns survive")
 	require.Contains(t, got, `/static/htmx-ext-sse.min.js`,
 		"chat page must load the SSE extension or sse-connect won't work")
+	require.Contains(t, got, `hx-on:keydown=`,
+		"chat input must carry a keydown handler so Enter submits (Shift+Enter newlines)")
+	require.Contains(t, got, `requestSubmit()`,
+		"keydown handler must call requestSubmit so form validation still runs")
 }
 
 // TestPages_mealsFormWiring locks in the load-bearing attributes on
