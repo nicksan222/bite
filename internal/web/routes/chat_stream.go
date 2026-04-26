@@ -48,7 +48,11 @@ func chatStart(d Deps) fiber.Handler {
 			TurnID   string
 			UserText string
 		}{TurnID: turnID, UserText: message}); err != nil {
-			return fiber.NewError(http.StatusInternalServerError, "render chat turn: "+err.Error())
+			// Defensive: chatTurnTmpl parses at init and the data
+			// shape is fixed, so this branch is unreachable in
+			// practice — but if it ever fires, the form expects HTML
+			// and would render a JSON envelope as text.
+			return htmlError(c, http.StatusInternalServerError, "render chat turn: "+err.Error())
 		}
 		return c.Type("html").Send(buf.Bytes())
 	}
