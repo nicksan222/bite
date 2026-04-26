@@ -37,11 +37,19 @@ func writeMealLine(sb *strings.Builder, indent string, m db.Meal) {
 		indent, m.Title, m.Kcal, m.ProteinG, m.CarbsG, m.FatG)
 }
 
+// formatMacrosFull renders the long-form macro tail "X kcal, Yg protein,
+// Zg carbs, Wg fat" used by both writeTotalsLine and formatMealSaved. One
+// formatter keeps the precision (kcal int, macros 1 decimal) and field
+// order locked across every surface that confirms a meal or sums a day.
+func formatMacrosFull(kcal, protein, carbs, fat float64) string {
+	return fmt.Sprintf("%.0f kcal, %.1fg protein, %.1fg carbs, %.1fg fat",
+		kcal, protein, carbs, fat)
+}
+
 // writeTotalsLine writes "Total: K kcal, Pg protein, Cg carbs, Fg fat" with
 // the supplied label (e.g. "Total" or "  Day total").
 func writeTotalsLine(sb *strings.Builder, label string, t totals) {
-	fmt.Fprintf(sb, "%s: %.0f kcal, %.1fg protein, %.1fg carbs, %.1fg fat",
-		label, t.Kcal, t.ProteinG, t.CarbsG, t.FatG)
+	fmt.Fprintf(sb, "%s: %s", label, formatMacrosFull(t.Kcal, t.ProteinG, t.CarbsG, t.FatG))
 }
 
 // formatMealSaved is the canonical "logged a meal" confirmation line, shared
@@ -50,10 +58,8 @@ func writeTotalsLine(sb *strings.Builder, label string, t totals) {
 // both surfaces — matters because the chat history shows assistant turns,
 // and the model uses prior confirmations as context for follow-ups.
 func formatMealSaved(m db.Meal) string {
-	return fmt.Sprintf(
-		"logged #%d %s — %.0f kcal, %.1fg protein, %.1fg carbs, %.1fg fat",
-		m.ID, m.Title, m.Kcal, m.ProteinG, m.CarbsG, m.FatG,
-	)
+	return fmt.Sprintf("logged #%d %s — %s",
+		m.ID, m.Title, formatMacrosFull(m.Kcal, m.ProteinG, m.CarbsG, m.FatG))
 }
 
 // formatMealList produces a flat bullet list of meals followed by a single
