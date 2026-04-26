@@ -45,11 +45,6 @@ func chatStream(d Deps) fiber.Handler {
 
 		history := buildChatHistory(req)
 
-		c.Set("Content-Type", "text/event-stream")
-		c.Set("Cache-Control", "no-cache")
-		c.Set("Connection", "keep-alive")
-		c.Set("X-Accel-Buffering", "no")
-
 		ctx := c.Context()
 		var opts []ai.StreamOption
 		if d.StreamOpts != nil {
@@ -59,6 +54,13 @@ func chatStream(d Deps) fiber.Handler {
 		if err != nil {
 			return jsonError(c, http.StatusBadGateway, err.Error())
 		}
+
+		// Headers stay deferred until Stream succeeds so the JSON-error
+		// fallback above isn't shipped with SSE Content-Type already set.
+		c.Set("Content-Type", "text/event-stream")
+		c.Set("Cache-Control", "no-cache")
+		c.Set("Connection", "keep-alive")
+		c.Set("X-Accel-Buffering", "no")
 
 		return c.SendStreamWriter(func(w *bufio.Writer) {
 			for ev := range events {
