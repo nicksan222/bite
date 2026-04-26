@@ -89,6 +89,28 @@ func TestChatPersister_appendAssistant(t *testing.T) {
 	assert.Equal(t, "reply", msgs[0].Content)
 }
 
+func TestChatPersister_appendUser_storeError(t *testing.T) {
+	ctx := context.Background()
+	deps := freshDeps(t)
+	conv, err := deps.Store.NewConversation(ctx, "m", "")
+	require.NoError(t, err)
+	require.NoError(t, deps.Store.Close()) // makes AppendMessage error
+
+	p := NewChatPersister(deps.Store, conv.ID, false)
+	require.Error(t, p.AppendUser(ctx, "hi"))
+}
+
+func TestChatPersister_appendAssistant_storeError(t *testing.T) {
+	ctx := context.Background()
+	deps := freshDeps(t)
+	conv, err := deps.Store.NewConversation(ctx, "m", "")
+	require.NoError(t, err)
+	require.NoError(t, deps.Store.Close())
+
+	p := NewChatPersister(deps.Store, conv.ID, true)
+	require.Error(t, p.AppendAssistant(ctx, "hi"))
+}
+
 func TestDeriveTitle_truncatesAndStripsNewlines(t *testing.T) {
 	got := DeriveTitle("first line\nsecond line")
 	assert.Equal(t, "first line", got)

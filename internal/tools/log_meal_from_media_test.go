@@ -33,3 +33,15 @@ func TestLogMealFromMedia_emptyInput(t *testing.T) {
 	_, err := MustGet("log_meal_from_media").Run(ctx, deps, NewArgs(nil))
 	require.Error(t, err)
 }
+
+func TestLogMealFromMedia_saveError(t *testing.T) {
+	ctx := context.Background()
+	deps := freshDeps(t)
+	deps.AI = stubAI{resp: analysisJSON}
+	require.NoError(t, deps.Store.Close()) // forces SaveMeal to error after analyze succeeds
+
+	_, err := MustGet("log_meal_from_media").Run(ctx, deps, NewArgs(map[string]any{
+		"text": "lunch",
+	}))
+	require.Error(t, err)
+}
