@@ -53,6 +53,19 @@ func TestDispatch_help(t *testing.T) {
 	})
 }
 
+// TestHelpText_widthExtendsForShortToolNames covers the post-loop width
+// adjustment: when every registered tool's "/<name>" is shorter than
+// "/help", the help row itself becomes the column width. Without that
+// adjustment the "/help" line would render misaligned.
+func TestHelpText_widthExtendsForShortToolNames(t *testing.T) {
+	withCleanRegistry(t, func() {
+		Register(noopTool("x"))
+		out := helpText()
+		assert.Contains(t, out, "/x")
+		assert.Contains(t, out, "/help")
+	})
+}
+
 // TestHelpText_includesPositionalSignature ensures /help shows the same
 // "<a> [b]" placeholder shape that `bite <tool> --help` shows, so a user
 // reading slash help knows what arguments to type without leaving the TUI.
