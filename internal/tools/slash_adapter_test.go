@@ -8,6 +8,17 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
+func TestDispatch_nonSlashLine(t *testing.T) {
+	// Lines that don't start with / shouldn't reach Dispatch in practice
+	// (the TUI gates on the prefix), but if one does we want a clear error
+	// rather than a silent swallow.
+	withCleanRegistry(t, func() {
+		out := Dispatch(context.Background(), Deps{}, "hello there")
+		require.Error(t, out.ParseError)
+		assert.Contains(t, out.ParseError.Error(), "not a slash command")
+	})
+}
+
 func TestDispatch_bareSlash(t *testing.T) {
 	withCleanRegistry(t, func() {
 		out := Dispatch(context.Background(), Deps{}, "/")
