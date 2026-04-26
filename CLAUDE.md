@@ -192,24 +192,37 @@ We use libraries for everything that has one. Audit before hand-rolling:
 - SQL codegen → `sqlc`
 - TUI → `charmbracelet/{bubbletea,bubbles,lipgloss,glamour}`
 - CLI → `spf13/cobra` + `charmbracelet/fang`
-- AI → `cloudwego/eino` + `eino-ext/components/model/claude`
+- AI → `cloudwego/eino` + `eino-ext/components/model/{claude,openai,gemini,ollama}`
 - text truncation → `mattn/go-runewidth`
 
 If you reach for `os.Getenv` directly, stop — add a field to `config.Config`
-with the right tag.
+with the right tag. (One carve-out: `internal/ai/provider.go` reads each
+provider's credential and base-URL env vars itself, since `ProviderSpec`
+declares them. That keeps adding a provider a one-file change.)
 
-### Claude-only by design
-bite uses Claude (Anthropic) and has no abstraction for swapping providers.
-The model factory lives in `internal/ai/claude.go`. If a second provider is
-ever needed, add a sibling file (e.g. `openai.go`) — don't build a generic
-provider system speculatively.
+### Multi-provider AI
+bite supports Anthropic (default), OpenAI, Gemini, and Ollama. Each backend
+lives in its own file under `internal/ai/` (`claude.go`, `openai.go`,
+`gemini.go`, `ollama.go`) and self-registers a `ProviderSpec` from `init()`.
+Consumers (`NewClient`, doctor checks, wiring) only see the registry — they
+never switch on provider name.
+
+To add a new provider, drop a file next to the others that calls
+`ai.RegisterProvider(ProviderSpec{...})` with the env var, default model,
+and a `Build` factory. Nothing else needs touching: `bite doctor` picks up
+its credential check automatically, and `BITE_PROVIDER=<name>` selects it.
+
+The provider's own `Validate` returns a typed `*MissingCredentialError`
+naming its env var, so consumers get user-actionable errors without
+knowing the implementation.
 
 ### Multimodal
 `bite analyze_meal` (estimate without saving) and `bite log_meal_from_media`
 (estimate + save) are the two entry points for any combination of images,
 audio, video, and text. Pre-processing lives in `internal/media`:
 
-- **Images** → sent directly via Claude vision (no preprocessing).
+- **Images** → sent directly via the active provider's vision endpoint
+  (no preprocessing).
 - **Audio** → OpenAI Whisper (`OPENAI_API_KEY` required); transcript is
   folded into the prompt text.
 - **Video** → `ffmpeg` keyframe extraction; frames are sent as images.

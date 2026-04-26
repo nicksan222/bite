@@ -35,8 +35,10 @@ var rootCmd = &cobra.Command{
 Chat about food, log meals, estimate calories and macros from images, audio,
 or video. Conversations live locally in SQLite.
 
-Set ANTHROPIC_API_KEY (or put it in .env) before running. See bite doctor
-for environment health checks.`,
+Set an AI provider's API key before running:
+  ANTHROPIC_API_KEY (default), OPENAI_API_KEY, GEMINI_API_KEY,
+  or BITE_PROVIDER=ollama for a local Ollama daemon.
+See bite doctor for environment health checks.`,
 	// Example block + RunE are filled by tools.RegisterCobra and
 	// tools.SetDefault respectively — see Execute below. This keeps the
 	// rootCmd declarative; adding/renaming the chat tool needs no edits here.

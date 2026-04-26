@@ -12,7 +12,9 @@ $ bite chat
 ## Requirements
 
 - Go 1.25+
-- An [Anthropic API key](https://console.anthropic.com/)
+- An API key for one of the supported providers (Anthropic, OpenAI, Gemini),
+  **or** a local [Ollama](https://ollama.com) install — bite can offer to set
+  one up for you on first run.
 
 ## Quickstart
 
@@ -21,7 +23,8 @@ git clone https://github.com/nicksan222/bite
 cd bite
 
 cp .env.example .env
-# add your ANTHROPIC_API_KEY to .env
+# add ANTHROPIC_API_KEY (or OPENAI_API_KEY / GEMINI_API_KEY) to .env
+# — or skip this step and bite will offer to install Ollama locally on first run
 
 make setup
 make run
@@ -33,9 +36,13 @@ All config lives in `.env` (or environment variables):
 
 | Variable | Default | Description |
 |---|---|---|
-| `ANTHROPIC_API_KEY` | — | **Required.** Your Anthropic key. |
+| `BITE_PROVIDER` | auto-detect | `anthropic` · `openai` · `gemini` · `ollama`. Empty picks the first provider whose key is set. |
+| `ANTHROPIC_API_KEY` | — | Anthropic key (default provider). |
+| `OPENAI_API_KEY` | — | OpenAI key. Also enables Whisper audio transcription. |
+| `GEMINI_API_KEY` | — | Google Gemini key. |
+| `OLLAMA_BASE_URL` | `http://localhost:11434` | Local Ollama daemon URL. |
 | `BITE_DB` | `$XDG_DATA_HOME/bite/bite.db` | SQLite database path. |
-| `BITE_MODEL` | `claude-sonnet-4-6` | Claude model ID. |
+| `BITE_MODEL` | provider's default | Override the model ID for the active provider. |
 | `BITE_MAX_TOKENS` | `4096` | Max tokens per turn. |
 | `BITE_SYSTEM_PROMPT` | built-in | Override the nutritionist prompt. |
 
@@ -64,4 +71,4 @@ Run `bite doctor` if something feels off — the check list is auto-derived from
 
 ## Stack
 
-Go · [eino](https://github.com/cloudwego/eino) · Claude · [bubbletea](https://github.com/charmbracelet/bubbletea) · SQLite
+Go · [eino](https://github.com/cloudwego/eino) (Anthropic · OpenAI · Gemini · Ollama) · [bubbletea](https://github.com/charmbracelet/bubbletea) · SQLite
