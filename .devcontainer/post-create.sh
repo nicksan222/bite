@@ -7,10 +7,23 @@ set -euo pipefail
 # toolchain it needs.
 export GOTOOLCHAIN=auto
 
-echo "==> Installing sqlite3..."
+echo "==> Installing system packages..."
 sudo apt-get update
-sudo apt-get install -y --no-install-recommends sqlite3
+# sqlite3 — local DB CLI for poking at bite.db.
+# zstd    — required by Ollama's official install script.
+# ffmpeg  — bite extracts video keyframes via ffmpeg for analyze_meal.
+# curl    — used by the Ollama installer; usually present, ensure it.
+sudo apt-get install -y --no-install-recommends \
+  sqlite3 \
+  zstd \
+  ffmpeg \
+  curl
 sudo rm -rf /var/lib/apt/lists/*
+
+if ! command -v ollama >/dev/null 2>&1; then
+  echo "==> Installing Ollama..."
+  curl -fsSL https://ollama.com/install.sh | sh
+fi
 
 echo "==> Installing Go tools (sqlc, goose, golangci-lint, goreleaser, air)..."
 go install github.com/sqlc-dev/sqlc/cmd/sqlc@latest
@@ -27,6 +40,11 @@ fi
 if [ -f sqlc.yaml ]; then
   echo "==> Generating sqlc code..."
   sqlc generate || echo "(sqlc generate failed; run manually after fixing schema)"
+fi
+
+if command -v nvidia-smi >/dev/null 2>&1; then
+  echo "==> NVIDIA GPU detected — Ollama will use it automatically:"
+  nvidia-smi --query-gpu=name,memory.total --format=csv,noheader || true
 fi
 
 echo
