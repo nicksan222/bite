@@ -3,6 +3,7 @@ package tui_test
 import (
 	"context"
 	"errors"
+	"strings"
 	"testing"
 
 	tea "github.com/charmbracelet/bubbletea"
@@ -96,13 +97,10 @@ func TestNew_acceptsSlashHandler(t *testing.T) {
 	assert.NotNil(t, p)
 }
 
-// Ensure the constructor wires errors through. We can't drive bubbletea
-// inputs directly here, but we can at least exercise the option path.
 func TestNew_slashHandlerOptional(t *testing.T) {
+	// Without WithSlashHandler, New still produces a valid program — the
+	// chat just won't intercept "/cmd" lines (they go to the model).
 	require.NotNil(t, tui.New(context.Background(), &mockStreamer{}, &mockPersister{}, nil, nil))
-	require.NotPanics(t, func() {
-		_ = errors.New("placeholder to keep errors import live")
-	})
 }
 
 func TestMockStreamer_returnsError(t *testing.T) {
@@ -117,12 +115,12 @@ func TestMockStreamer_deliversEvents(t *testing.T) {
 	ch, err := s.Stream(context.Background(), nil)
 	require.NoError(t, err)
 
-	var got string
+	var got strings.Builder
 	for ev := range ch {
 		if ev.Done {
 			break
 		}
-		got += ev.Delta
+		got.WriteString(ev.Delta)
 	}
-	assert.Equal(t, "hello world", got)
+	assert.Equal(t, "hello world", got.String())
 }
