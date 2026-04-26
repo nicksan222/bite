@@ -110,6 +110,11 @@ func TestAITools_ExecuteInvalidJSON(t *testing.T) {
 	})
 }
 
+func TestRenderMarkdownTable_emptyShortCircuits(t *testing.T) {
+	assert.Equal(t, "", renderMarkdownTable(nil))
+	assert.Equal(t, "", renderMarkdownTable(&Table{}))
+}
+
 func TestRenderMarkdownTable(t *testing.T) {
 	got := renderMarkdownTable(&Table{
 		Headers: []string{"A", "B"},
