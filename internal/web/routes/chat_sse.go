@@ -57,7 +57,7 @@ func pumpStreamEvents(w *bufio.Writer, events <-chan ai.StreamEvent) string {
 			writeSSEErrorAndDone(w, ev.Err.Error())
 			return ""
 		case ev.Done:
-			writeSSE(w, sseEventDone, "")
+			writeSSEDone(w)
 			return cmp.Or(ev.Final, assembled.String())
 		case ev.Delta != "":
 			assembled.WriteString(ev.Delta)
@@ -70,8 +70,14 @@ func pumpStreamEvents(w *bufio.Writer, events <-chan ai.StreamEvent) string {
 	// Channel closed without a terminal Done event — emit one ourselves
 	// so the browser's sse-close="done" hook still fires. Return whatever
 	// we accumulated so the session history records the partial reply.
-	writeSSE(w, sseEventDone, "")
+	writeSSEDone(w)
 	return assembled.String()
+}
+
+// writeSSEDone sends the terminating done event that triggers the asst
+// bubble's sse-close="done" hook on the client.
+func writeSSEDone(w *bufio.Writer) {
+	writeSSE(w, sseEventDone, "")
 }
 
 // writeSSEErrorAndDone sends an error event followed by a terminating
@@ -79,7 +85,7 @@ func pumpStreamEvents(w *bufio.Writer, events <-chan ai.StreamEvent) string {
 // and the EventSource shuts cleanly.
 func writeSSEErrorAndDone(w *bufio.Writer, msg string) {
 	writeSSE(w, sseEventError, msg)
-	writeSSE(w, sseEventDone, "")
+	writeSSEDone(w)
 }
 
 // writeSSE emits one Server-Sent Event with plain-text body. Multi-line
