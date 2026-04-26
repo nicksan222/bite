@@ -32,13 +32,16 @@ func TestSessionStore_cookieSecuritySettings(t *testing.T) {
 }
 
 // TestSessionStore_appendTurn_unknownIDIsNoop pins the contract that
-// appending to a missing session is silent — the SSE handler may race
-// with session expiry and shouldn't blow up if the session is gone.
+// appending to a missing session is silent and inert — the SSE handler
+// may race with session expiry and shouldn't blow up if the session is
+// gone, nor should it resurrect the session by writing under the
+// missing ID.
 func TestSessionStore_appendTurn_unknownIDIsNoop(t *testing.T) {
 	s := &sessionStore{sessions: map[string]*chatSession{}}
 	require.NotPanics(t, func() {
 		s.appendTurn("nope", "user", "asst")
 	})
+	require.Empty(t, s.sessions, "appendTurn must not create a session for an unknown ID")
 }
 
 // TestSessionStore_appendTurn_refreshesLastTouched proves appendTurn
