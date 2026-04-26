@@ -172,15 +172,19 @@ func TestChatTurn_unknownIdYieldsSSEError(t *testing.T) {
 
 // TestChatStream_unconfiguredYieldsSSEError covers the AI-not-configured
 // path: instead of a 503 JSON, the user sees an SSE error event in the
-// asst bubble, plus a clean done.
+// asst bubble, plus a terminating done event so htmx-ext-sse closes
+// the EventSource cleanly via sse-close="done".
 func TestChatStream_unconfiguredYieldsSSEError(t *testing.T) {
 	app := newApp(Deps{})
 	resp, err := app.Test(httptest.NewRequest(http.MethodGet, chatStreamPathPrefix+"whatever", nil))
 	require.NoError(t, err)
 	require.Equal(t, http.StatusOK, resp.StatusCode)
 	body, _ := io.ReadAll(resp.Body)
-	require.Contains(t, string(body), "event: error")
-	require.Contains(t, string(body), "AI not configured")
+	got := string(body)
+	require.Contains(t, got, "event: error")
+	require.Contains(t, got, "AI not configured")
+	require.Contains(t, got, "event: done",
+		"every error path must terminate with a done event so the EventSource closes cleanly")
 }
 
 // TestChatStream_forwardsStreamOpts proves the chat handler still
