@@ -46,3 +46,9 @@ type Message struct {
 	Content        string    `json:"content"`
 	CreatedAt      time.Time `json:"created_at"`
 }
+
+type Preference struct {
+	Key       string    `json:"key"`
+	Value     string    `json:"value"`
+	UpdatedAt time.Time `json:"updated_at"`
+}

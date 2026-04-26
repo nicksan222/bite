@@ -45,6 +45,30 @@ func TestStoreSmoke(t *testing.T) {
 	assert.Equal(t, int64(2), count)
 }
 
+func TestPreferences_setGetAndUpsert(t *testing.T) {
+	ctx := context.Background()
+	store := newTestStore(t)
+
+	// Missing key returns ok=false, no error — the contract callers rely
+	// on so they can collapse the absent-row case without errors.Is.
+	v, ok, err := store.GetPreference(ctx, "nope")
+	require.NoError(t, err)
+	assert.False(t, ok)
+	assert.Empty(t, v)
+
+	require.NoError(t, store.SetPreference(ctx, "k", "v1"))
+	v, ok, err = store.GetPreference(ctx, "k")
+	require.NoError(t, err)
+	assert.True(t, ok)
+	assert.Equal(t, "v1", v)
+
+	// SetPreference upserts on conflict — second call replaces.
+	require.NoError(t, store.SetPreference(ctx, "k", "v2"))
+	v, _, err = store.GetPreference(ctx, "k")
+	require.NoError(t, err)
+	assert.Equal(t, "v2", v)
+}
+
 func TestRenameAndDelete(t *testing.T) {
 	ctx := context.Background()
 	store := newTestStore(t)

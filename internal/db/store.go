@@ -4,6 +4,7 @@ import (
 	"context"
 	"database/sql"
 	"encoding/json"
+	"errors"
 	"fmt"
 	"time"
 
@@ -59,6 +60,10 @@ type Storer interface {
 
 	// Streak
 	Streak(ctx context.Context, now time.Time, loc *time.Location) (int, error)
+
+	// Preferences
+	GetPreference(ctx context.Context, key string) (value string, ok bool, err error)
+	SetPreference(ctx context.Context, key, value string) error
 
 	Close() error
 }
@@ -251,4 +256,26 @@ func (s *Store) SetGoals(ctx context.Context, in GoalInput) (Goal, error) {
 		CarbsG:   in.CarbsG,
 		FatG:     in.FatG,
 	})
+}
+
+// ─── Preferences ────────────────────────────────────────────────────────────
+
+// GetPreference returns ok=false (and no error) when the key is absent
+// so callers don't need errors.Is(sql.ErrNoRows, …).
+func (s *Store) GetPreference(ctx context.Context, key string) (string, bool, error) {
+	v, err := s.q.GetPreference(ctx, key)
+	if errors.Is(err, sql.ErrNoRows) {
+		return "", false, nil
+	}
+	if err != nil {
+		return "", false, fmt.Errorf("get preference %q: %w", key, err)
+	}
+	return v, true, nil
+}
+
+func (s *Store) SetPreference(ctx context.Context, key, value string) error {
+	if err := s.q.SetPreference(ctx, sqlc.SetPreferenceParams{Key: key, Value: value}); err != nil {
+		return fmt.Errorf("set preference %q: %w", key, err)
+	}
+	return nil
 }
