@@ -56,19 +56,9 @@ func runChat(ctx context.Context, resumeID int64) error {
 
 	deps := tools.Deps{Store: store, AI: client, OpenAIAPIKey: cfg.OpenAIAPIKey}
 	streamOpts := []ai.StreamOption{ai.WithTools(tools.AITools(deps))}
-	slash := func(c context.Context, line string) (string, error) {
-		out := tools.Dispatch(c, deps, line)
-		if out.ParseError != nil {
-			return "", out.ParseError
-		}
-		if out.RunError != nil {
-			return "", out.RunError
-		}
-		return tools.RenderResultForChat(out.Result), nil
-	}
-
 	persist := tools.NewChatPersister(store, convID, len(history) > 0)
-	prog := tui.New(ctx, client, persist, history, streamOpts, tui.WithSlashHandler(slash))
+	prog := tui.New(ctx, client, persist, history, streamOpts,
+		tui.WithSlashHandler(tui.SlashHandler(tools.NewSlashHandler(deps))))
 	_, err = prog.Run()
 	return err
 }

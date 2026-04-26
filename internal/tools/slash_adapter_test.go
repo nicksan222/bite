@@ -123,6 +123,43 @@ func TestDispatch_unknownKey(t *testing.T) {
 	})
 }
 
+func TestNewSlashHandler_returnsRenderedTextOnSuccess(t *testing.T) {
+	withCleanRegistry(t, func() {
+		Register(Tool{
+			Name: "show", Summary: "s", Description: "d",
+			Run: func(_ context.Context, _ Deps, _ Args) (Result, error) {
+				return Result{Text: "hello"}, nil
+			},
+		})
+		h := NewSlashHandler(Deps{})
+		out, err := h(context.Background(), "/show")
+		require.NoError(t, err)
+		assert.Equal(t, "hello", out)
+	})
+}
+
+func TestNewSlashHandler_surfacesParseError(t *testing.T) {
+	withCleanRegistry(t, func() {
+		h := NewSlashHandler(Deps{})
+		_, err := h(context.Background(), "/nope")
+		require.Error(t, err)
+	})
+}
+
+func TestNewSlashHandler_surfacesRunError(t *testing.T) {
+	withCleanRegistry(t, func() {
+		Register(Tool{
+			Name: "boom", Summary: "s", Description: "d",
+			Run: func(_ context.Context, _ Deps, _ Args) (Result, error) {
+				return Result{}, assert.AnError
+			},
+		})
+		h := NewSlashHandler(Deps{})
+		_, err := h(context.Background(), "/boom")
+		require.Error(t, err)
+	})
+}
+
 func TestDispatch_runError(t *testing.T) {
 	withCleanRegistry(t, func() {
 		Register(Tool{
