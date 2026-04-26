@@ -4,6 +4,7 @@ import (
 	"io"
 	"net/http"
 	"net/http/httptest"
+	"strings"
 	"testing"
 
 	"github.com/stretchr/testify/require"
@@ -37,6 +38,43 @@ func TestPages_render(t *testing.T) {
 			require.Equal(t, "text/html; charset=utf-8", resp.Header.Get("Content-Type"))
 			body, _ := io.ReadAll(resp.Body)
 			require.Contains(t, string(body), "<title>bite — "+c.title+"</title>")
+		})
+	}
+}
+
+// TestPages_activeNavMarked asserts each page renders aria-current="page"
+// on exactly the link that points back at it (and on no other). Drift
+// here would silently regress screen-reader navigation.
+func TestPages_activeNavMarked(t *testing.T) {
+	app := newApp(Deps{
+		ListTools: func() []ToolMeta { return nil },
+	})
+	cases := []struct {
+		path  string
+		label string // text inside the active <a>
+	}{
+		{"/", "Chat"},
+		{"/dashboard", "Dashboard"},
+		{"/meals", "Meals"},
+		{"/tools", "Tools"},
+	}
+	for _, c := range cases {
+		t.Run(c.path, func(t *testing.T) {
+			resp, err := app.Test(httptest.NewRequest(http.MethodGet, c.path, nil))
+			require.NoError(t, err)
+			body, _ := io.ReadAll(resp.Body)
+			got := string(body)
+			// The active link must carry aria-current="page" and end
+			// with the label — assert the pair so a misplaced
+			// aria-current can't pass the test.
+			require.Regexp(t,
+				`aria-current="page"\s*>`+c.label+`</a>`,
+				got,
+				"expected active link with label %q to carry aria-current", c.label,
+			)
+			// Exactly one aria-current per page.
+			require.Equal(t, 1, strings.Count(got, `aria-current="page"`),
+				"more than one aria-current attribute rendered")
 		})
 	}
 }
