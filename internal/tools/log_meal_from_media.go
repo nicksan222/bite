@@ -34,6 +34,9 @@ func runLogMealFromMedia(ctx context.Context, deps Deps, args Args) (Result, err
 	if err != nil {
 		return Result{}, err
 	}
+	if err := requireMealNutrition(a.Kcal, a.ProteinG, a.CarbsG, a.FatG); err != nil {
+		return Result{}, err
+	}
 	meal, err := deps.Store.SaveMeal(ctx, db.MealInput{
 		Title:       a.Title,
 		Description: a.Description,
