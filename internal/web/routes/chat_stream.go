@@ -129,12 +129,11 @@ func parseChatRole(s string) (ai.Role, error) {
 	}
 }
 
-// writeSSE emits one Server-Sent Event. Errors writing mean the client
-// disconnected; the caller's loop ends on the next iteration.
+// writeSSE emits one Server-Sent Event. Payload must be one of the
+// sse* structs above — those are JSON-marshal-safe by construction, so
+// the marshal error is suppressed. Write errors mean the client
+// disconnected; the caller's loop terminates on the next iteration.
 func writeSSE(w *bufio.Writer, event string, payload any) {
-	body, err := json.Marshal(payload)
-	if err != nil {
-		body = []byte(`{"message":"encode failed"}`)
-	}
+	body, _ := json.Marshal(payload)
 	fmt.Fprintf(w, "event: %s\ndata: %s\n\n", event, body)
 }
