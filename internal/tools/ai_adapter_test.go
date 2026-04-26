@@ -125,6 +125,21 @@ func TestRenderForAI_textPlusTable(t *testing.T) {
 	assert.Contains(t, out, "| y |")
 }
 
+func TestAITools_ExecuteSurfacesRunError(t *testing.T) {
+	withCleanRegistry(t, func() {
+		Register(Tool{
+			Name: "boom", Summary: "s", Description: "d",
+			Run: func(_ context.Context, _ Deps, _ Args) (Result, error) {
+				return Result{}, assert.AnError
+			},
+		})
+		got := AITools(Deps{})
+		require.Len(t, got, 1)
+		_, err := got[0].Execute(context.Background(), "")
+		require.Error(t, err)
+	})
+}
+
 func TestRenderResultForChat_isExportedAlias(t *testing.T) {
 	r := Result{Text: "x", Table: &Table{Headers: []string{"H"}, Rows: [][]string{{"v"}}}}
 	assert.Equal(t, renderForAI(r), RenderResultForChat(r))

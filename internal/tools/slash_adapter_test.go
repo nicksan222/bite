@@ -214,7 +214,11 @@ func TestIsKeyValue(t *testing.T) {
 	assert.True(t, isKeyValue("kcal=2000"))
 	assert.True(t, isKeyValue("protein-g=150"))
 	assert.True(t, isKeyValue("snake_case=1"))
+	assert.True(t, isKeyValue("k1=v"), "digit allowed after first char")
 	assert.False(t, isKeyValue("noequals"))
 	assert.False(t, isKeyValue("=novalue"))
 	assert.False(t, isKeyValue("=1=2"))
+	assert.False(t, isKeyValue("1foo=bar"), "name must not start with a digit")
+	assert.False(t, isKeyValue("-foo=bar"), "name must not start with a hyphen")
+	assert.False(t, isKeyValue("foo$=bar"), "names reject special chars")
 }
