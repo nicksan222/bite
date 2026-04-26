@@ -3,7 +3,7 @@ package tools
 import (
 	"context"
 	"fmt"
-	"sort"
+	"slices"
 	"sync"
 )
 
@@ -73,14 +73,14 @@ func RegisterCheck(c Check) {
 }
 
 // Checks returns every registered check sorted by severity (hard before
-// soft); SliceStable preserves the registration order within a severity.
+// soft); slices.SortStableFunc preserves the registration order within a
+// severity.
 func Checks() []Check {
 	checkMu.RLock()
 	defer checkMu.RUnlock()
-	out := make([]Check, len(checks))
-	copy(out, checks)
-	sort.SliceStable(out, func(i, j int) bool {
-		return out[i].Severity < out[j].Severity
+	out := slices.Clone(checks)
+	slices.SortStableFunc(out, func(a, b Check) int {
+		return int(a.Severity) - int(b.Severity)
 	})
 	return out
 }
