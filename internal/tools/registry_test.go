@@ -1,0 +1,166 @@
+package tools
+
+import (
+	"context"
+	"testing"
+
+	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
+)
+
+// noopTool returns a minimal valid Tool for invariant tests.
+func noopTool(name string) Tool {
+	return Tool{
+		Name:        name,
+		Summary:     "summary",
+		Description: "description",
+		Run: func(_ context.Context, _ Deps, _ Args) (Result, error) {
+			return Result{Text: "ok"}, nil
+		},
+	}
+}
+
+// ─── live-registry invariants ────────────────────────────────────────────────
+//
+// These iterate the live registry — adding a tool extends coverage automatically.
+// No hardcoded list of tool names: that ban is the whole point of this package.
+
+func TestRegistry_invariants(t *testing.T) {
+	for _, tool := range All() {
+		require.NoError(t, tool.validate(), "tool %q failed invariants", tool.Name)
+	}
+}
+
+func TestRegistry_namesUnique(t *testing.T) {
+	seen := map[string]struct{}{}
+	for _, tool := range All() {
+		_, dup := seen[tool.Name]
+		assert.False(t, dup, "tool name %q registered twice", tool.Name)
+		seen[tool.Name] = struct{}{}
+	}
+}
+
+// ─── isolated tests against a swappable registry ─────────────────────────────
+
+func withCleanRegistry(t *testing.T, fn func()) {
+	t.Helper()
+	regMu.Lock()
+	saved := reg
+	reg = map[string]Tool{}
+	regMu.Unlock()
+	t.Cleanup(func() {
+		regMu.Lock()
+		reg = saved
+		regMu.Unlock()
+	})
+	fn()
+}
+
+func TestRegister_and_All(t *testing.T) {
+	withCleanRegistry(t, func() {
+		Register(noopTool("b_tool"))
+		Register(noopTool("a_tool"))
+		got := All()
+		require.Len(t, got, 2)
+		assert.Equal(t, "a_tool", got[0].Name, "All() should sort by name")
+		assert.Equal(t, "b_tool", got[1].Name)
+	})
+}
+
+func TestRegister_panicsOnDuplicate(t *testing.T) {
+	withCleanRegistry(t, func() {
+		Register(noopTool("dup"))
+		assert.Panics(t, func() { Register(noopTool("dup")) })
+	})
+}
+
+func TestRegister_panicsOnInvalid(t *testing.T) {
+	withCleanRegistry(t, func() {
+		assert.Panics(t, func() { Register(Tool{Name: "x", Summary: "s", Run: nil, Description: "d"}) })
+		assert.Panics(t, func() { Register(Tool{Name: "BAD", Summary: "s", Description: "d", Run: noopTool("x").Run}) })
+		assert.Panics(t, func() { Register(Tool{Name: "no_summary", Description: "d", Run: noopTool("x").Run}) })
+	})
+}
+
+func TestMustGet_panicsWhenMissing(t *testing.T) {
+	withCleanRegistry(t, func() {
+		assert.Panics(t, func() { MustGet("nope") })
+	})
+}
+
+func TestGet_returnsRegistered(t *testing.T) {
+	withCleanRegistry(t, func() {
+		Register(noopTool("hi"))
+		got, ok := Get("hi")
+		require.True(t, ok)
+		assert.Equal(t, "hi", got.Name)
+	})
+}
+
+// ─── validate edge cases ─────────────────────────────────────────────────────
+
+func TestValidate_requiredPositionalAfterOptional_fails(t *testing.T) {
+	tt := noopTool("bad_order")
+	tt.Params = []Param{
+		{Name: "opt", Type: ParamString, Positional: true, Required: false},
+		{Name: "req", Type: ParamString, Positional: true, Required: true},
+	}
+	assert.Error(t, tt.validate())
+}
+
+func TestValidate_duplicateParam_fails(t *testing.T) {
+	tt := noopTool("dup_param")
+	tt.Params = []Param{
+		{Name: "x", Type: ParamString},
+		{Name: "x", Type: ParamInt},
+	}
+	assert.Error(t, tt.validate())
+}
+
+func TestValidate_paramNameNotSnakeCase_fails(t *testing.T) {
+	tt := noopTool("bad_param_name")
+	tt.Params = []Param{{Name: "Foo", Type: ParamString}}
+	assert.Error(t, tt.validate())
+}
+
+func TestValidate_acceptsCleanTool(t *testing.T) {
+	tt := noopTool("good")
+	tt.Params = []Param{
+		{Name: "req_pos", Type: ParamString, Positional: true, Required: true},
+		{Name: "opt_pos", Type: ParamString, Positional: true},
+		{Name: "opt_flag", Type: ParamFloat},
+	}
+	assert.NoError(t, tt.validate())
+}
+
+func TestArgs_accessors(t *testing.T) {
+	a := NewArgs(map[string]any{
+		"s":  "hi",
+		"i":  float64(42), // JSON numbers arrive as float64
+		"f":  3.14,
+		"b":  true,
+		"sl": []any{"a", "b"},
+	})
+	assert.True(t, a.Has("s"))
+	assert.False(t, a.Has("missing"))
+	assert.Equal(t, "hi", a.String("s"))
+	assert.Equal(t, int64(42), a.Int("i"))
+	assert.Equal(t, 3.14, a.Float("f"))
+	assert.True(t, a.Bool("b"))
+	assert.Equal(t, []string{"a", "b"}, a.StringList("sl"))
+}
+
+func TestArgs_zeroOnMissing(t *testing.T) {
+	a := NewArgs(nil)
+	assert.Equal(t, "", a.String("x"))
+	assert.Equal(t, int64(0), a.Int("x"))
+	assert.Equal(t, 0.0, a.Float("x"))
+	assert.False(t, a.Bool("x"))
+	assert.Nil(t, a.StringList("x"))
+}
+
+func TestFlagName_kebabsUnderscores(t *testing.T) {
+	assert.Equal(t, "kcal", flagName(Param{Name: "kcal"}))
+	assert.Equal(t, "protein-g", flagName(Param{Name: "protein_g"}))
+	assert.Equal(t, "log-meal-from-media", flagName(Param{Name: "log_meal_from_media"}))
+}
