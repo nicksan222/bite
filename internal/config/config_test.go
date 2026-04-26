@@ -84,15 +84,16 @@ func TestLoad_uncreatableDataDir(t *testing.T) {
 	require.Error(t, err)
 }
 
-func TestLoad_defaultSystemPromptApplied(t *testing.T) {
+func TestLoad_emptySystemPromptStaysEmpty(t *testing.T) {
+	// The default persona lives in internal/tools (DefaultPersona); config
+	// must not silently inject one so callers see one source of truth.
 	t.Setenv("BITE_DB", t.TempDir()+"/bite.db")
 	t.Setenv("BITE_MAX_TOKENS", "")
 	t.Setenv("BITE_SYSTEM_PROMPT", "")
 
 	c, err := Load()
 	require.NoError(t, err)
-	assert.NotEmpty(t, c.SystemPrompt, "expected default system prompt when BITE_SYSTEM_PROMPT is unset")
-	assert.Greater(t, len(c.SystemPrompt), 20, "default system prompt looks too short: %q", c.SystemPrompt)
+	assert.Empty(t, c.SystemPrompt, "config should not fabricate a default; tools.BuildSystemPrompt does it")
 }
 
 func TestLoad_explicitSystemPromptPreserved(t *testing.T) {

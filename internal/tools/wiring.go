@@ -25,9 +25,9 @@ func OpenStore(ctx context.Context, cfg config.Config) (*db.Store, error) {
 	return db.Open(ctx, cfg.DSN)
 }
 
-// OpenAIClient builds an *ai.Client from cfg, appending the registry's tool
-// list to the configured system prompt so the model knows what it can call.
-// Fails fast if ANTHROPIC_API_KEY is unset.
+// OpenAIClient builds an *ai.Client from cfg with the assembled system
+// prompt (default persona or BITE_SYSTEM_PROMPT override, plus the
+// auto-generated tool appendix). Fails fast if ANTHROPIC_API_KEY is unset.
 func OpenAIClient(ctx context.Context, cfg config.Config) (*ai.Client, error) {
 	if err := cfg.RequireAPIKey(); err != nil {
 		return nil, err
@@ -36,7 +36,7 @@ func OpenAIClient(ctx context.Context, cfg config.Config) (*ai.Client, error) {
 		APIKey:       cfg.APIKey,
 		Model:        cfg.Model,
 		MaxTokens:    cfg.MaxTokens,
-		SystemPrompt: cfg.SystemPrompt + RenderAppendix(),
+		SystemPrompt: BuildSystemPrompt(cfg.SystemPrompt),
 	})
 }
 

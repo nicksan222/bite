@@ -11,21 +11,14 @@ import (
 	"github.com/joho/godotenv"
 )
 
-// defaultSystemPrompt is the nutritionist persona injected on every chat turn
-// unless the user overrides BITE_SYSTEM_PROMPT.
-//
-// Specific tool descriptions are auto-appended from internal/tools at chat
-// startup — keep this prompt focused on persona, posture, and house style.
-const defaultSystemPrompt = `You are bite, a friendly terminal AI nutritionist.
-Help users track meals, understand calories and macros, and make healthy choices.
-When the user reports eating something — even casually — call the appropriate logging tool to save it automatically.
-When the user asks about intake, progress, goals, streaks, or wants to change a target, prefer calling tools over guessing.
-Keep responses concise and scannable; this is a terminal, not a web app.`
-
 // Config is bite's runtime configuration.
 //
 // All settings come from environment variables. To add a setting, add a
 // struct field with the right `env:"…"` tag — no other wiring needed.
+//
+// SystemPrompt is intentionally empty by default; the chat persona lives
+// next to the tool registry (tools.DefaultPersona) so callers see one
+// source of truth. Set BITE_SYSTEM_PROMPT to override.
 type Config struct {
 	DSN          string `env:"BITE_DB"`
 	APIKey       string `env:"ANTHROPIC_API_KEY"`
@@ -45,10 +38,6 @@ func Load() (Config, error) {
 
 	if c.MaxTokens <= 0 {
 		return c, fmt.Errorf("BITE_MAX_TOKENS must be positive, got %d", c.MaxTokens)
-	}
-
-	if c.SystemPrompt == "" {
-		c.SystemPrompt = defaultSystemPrompt
 	}
 
 	if c.DSN == "" {
