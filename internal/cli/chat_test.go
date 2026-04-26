@@ -2,64 +2,52 @@ package cli
 
 import (
 	"context"
+	"maps"
 	"testing"
 
 	"github.com/stretchr/testify/require"
 )
 
-func TestRunChat_configError(t *testing.T) {
-	t.Setenv("BITE_MAX_TOKENS", "not-a-number")
-	t.Setenv("XDG_DATA_HOME", t.TempDir())
+// stubEnv prepares environment variables for runChat tests with sane defaults.
+// Pass overrides to flip individual values (e.g. an empty key, a bad DSN).
+func stubEnv(t *testing.T, overrides map[string]string) {
+	t.Helper()
+	defaults := map[string]string{
+		"BITE_DB":           t.TempDir() + "/test.db",
+		"BITE_MODEL":        "claude-haiku-4-5",
+		"BITE_MAX_TOKENS":   "",
+		"ANTHROPIC_API_KEY": "sk-test-fake",
+		"XDG_DATA_HOME":     t.TempDir(),
+	}
+	maps.Copy(defaults, overrides)
+	for k, v := range defaults {
+		t.Setenv(k, v)
+	}
+}
 
-	err := runChat(context.Background(), 0)
-	require.Error(t, err)
+func TestRunChat_configError(t *testing.T) {
+	stubEnv(t, map[string]string{"BITE_MAX_TOKENS": "not-a-number"})
+	require.Error(t, runChat(context.Background(), 0))
 }
 
 func TestRunChat_openStoreError(t *testing.T) {
-	t.Setenv("BITE_DB", "/tmp") // directory, not a file
-	t.Setenv("BITE_MODEL", "claude-haiku-4-5")
-	t.Setenv("BITE_MAX_TOKENS", "")
-	t.Setenv("ANTHROPIC_API_KEY", "sk-test-fake")
-	t.Setenv("XDG_DATA_HOME", t.TempDir())
-
-	err := runChat(context.Background(), 0)
-	require.Error(t, err)
+	stubEnv(t, map[string]string{"BITE_DB": "/tmp"}) // directory, not a file
+	require.Error(t, runChat(context.Background(), 0))
 }
 
 func TestRunChat_missingKey(t *testing.T) {
-	dir := t.TempDir()
-	t.Setenv("BITE_DB", dir+"/test.db")
-	t.Setenv("BITE_MODEL", "claude-haiku-4-5")
-	t.Setenv("BITE_MAX_TOKENS", "")
-	t.Setenv("ANTHROPIC_API_KEY", "")
-	t.Setenv("XDG_DATA_HOME", t.TempDir())
-
-	err := runChat(context.Background(), 0)
-	require.Error(t, err)
+	stubEnv(t, map[string]string{"ANTHROPIC_API_KEY": ""})
+	require.Error(t, runChat(context.Background(), 0))
 }
 
 func TestRunChat_resumeNotFound(t *testing.T) {
-	dir := t.TempDir()
-	t.Setenv("BITE_DB", dir+"/test.db")
-	t.Setenv("BITE_MODEL", "claude-haiku-4-5")
-	t.Setenv("BITE_MAX_TOKENS", "")
-	t.Setenv("ANTHROPIC_API_KEY", "sk-test-fake")
-	t.Setenv("XDG_DATA_HOME", t.TempDir())
-
-	err := runChat(context.Background(), 9999)
-	require.Error(t, err)
+	stubEnv(t, nil)
+	require.Error(t, runChat(context.Background(), 9999))
 }
 
 func TestRunChat_noTTY(t *testing.T) {
-	dir := t.TempDir()
-	t.Setenv("BITE_DB", dir+"/test.db")
-	t.Setenv("BITE_MODEL", "claude-haiku-4-5")
-	t.Setenv("BITE_MAX_TOKENS", "")
-	t.Setenv("ANTHROPIC_API_KEY", "sk-test-fake")
-	t.Setenv("XDG_DATA_HOME", t.TempDir())
-
-	err := runChat(context.Background(), 0)
-	if err == nil {
+	stubEnv(t, nil)
+	if runChat(context.Background(), 0) == nil {
 		t.Skip("running in TTY environment — skip non-TTY coverage test")
 	}
 }
