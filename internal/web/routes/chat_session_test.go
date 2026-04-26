@@ -63,10 +63,16 @@ func TestSessionStore_ensure_prunesIdleEntries(t *testing.T) {
 	app := newApp(Deps{AI: &stubStreamer{}})
 	// Plant a stale session in the global store and submit a request
 	// through ensure. The stale entry should disappear; the request's
-	// own session should appear.
+	// own session should appear. Cleanup resets the store so a leak
+	// from this test can't pollute downstream cases.
 	chatSessionStore.mu.Lock()
 	chatSessionStore.sessions["stale-id"] = &chatSession{last: time.Now().Add(-2 * chatSessionTTL)}
 	chatSessionStore.mu.Unlock()
+	t.Cleanup(func() {
+		chatSessionStore.mu.Lock()
+		chatSessionStore.sessions = map[string]*chatSession{}
+		chatSessionStore.mu.Unlock()
+	})
 
 	resp, err := app.Test(postForm("/api/chat", map[string]string{"message": "hi"}))
 	require.NoError(t, err)
