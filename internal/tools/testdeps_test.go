@@ -31,9 +31,17 @@ func freshDeps(t *testing.T) Deps {
 // the whole store can't reach (because Close makes everything fail).
 type partialFailStore struct {
 	db.Storer
-	listMessagesErr error
-	deleteMealErr   error
-	setGoalsErr     error
+	listMessagesErr    error
+	deleteMealErr      error
+	setGoalsErr        error
+	newConversationErr error
+}
+
+func (p *partialFailStore) NewConversation(ctx context.Context, model, title string) (db.Conversation, error) {
+	if p.newConversationErr != nil {
+		return db.Conversation{}, p.newConversationErr
+	}
+	return p.Storer.NewConversation(ctx, model, title)
 }
 
 func (p *partialFailStore) ListMessages(ctx context.Context, convID int64) ([]db.Message, error) {

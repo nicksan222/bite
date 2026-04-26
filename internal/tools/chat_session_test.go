@@ -45,6 +45,28 @@ func TestPrepareSession_resumeMissing(t *testing.T) {
 	require.Error(t, err)
 }
 
+func TestPrepareSession_newConversationError(t *testing.T) {
+	ctx := context.Background()
+	deps := freshDeps(t)
+	store := &partialFailStore{Storer: deps.Store, newConversationErr: assert.AnError}
+
+	_, _, err := PrepareSession(ctx, store, "m", 0)
+	require.Error(t, err)
+}
+
+func TestPrepareSession_listMessagesError(t *testing.T) {
+	// GetConversation succeeds, ListMessages fails — exercises the inner
+	// "load history" error wrap that closing the store can't isolate.
+	ctx := context.Background()
+	deps := freshDeps(t)
+	conv, err := deps.Store.NewConversation(ctx, "m", "")
+	require.NoError(t, err)
+	store := &partialFailStore{Storer: deps.Store, listMessagesErr: assert.AnError}
+
+	_, _, err = PrepareSession(ctx, store, "m", conv.ID)
+	require.Error(t, err)
+}
+
 func TestChatPersister_appendUser_setsTitle(t *testing.T) {
 	ctx := context.Background()
 	deps := freshDeps(t)
