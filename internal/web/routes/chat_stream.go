@@ -35,11 +35,16 @@ func chatStart(d Deps) fiber.Handler {
 		}
 
 		sessionID, sess := chatSessionStore.getOrCreate(c)
+		// Copy before appending: appending the user turn directly into
+		// sess.history would mutate the session's shared backing array
+		// when sess.history has spare capacity, which races concurrent
+		// readers in the session store.
 		history := append([]ai.Message{}, sess.history...)
+		history = append(history, ai.Message{Role: ai.RoleUser, Content: message})
 
 		turnID := turnStore.stash(pendingTurn{
 			sessionID: sessionID,
-			history:   append(history, ai.Message{Role: ai.RoleUser, Content: message}),
+			history:   history,
 			userMsg:   message,
 		})
 
