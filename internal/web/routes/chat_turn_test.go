@@ -8,7 +8,8 @@ import (
 )
 
 // TestTurnStash_popExpiredReturnsNotFound pins that an expired entry is
-// reported as missing — the SSE handler treats {ok:false} as a 404, so
+// reported as missing. The SSE handler converts pop's (zero, false)
+// into an `event: error\ndata: turn expired or not found` payload, so
 // an expired turn must not pretend to be valid.
 func TestTurnStash_popExpiredReturnsNotFound(t *testing.T) {
 	s := &turnStash{pending: map[string]pendingTurn{}}
