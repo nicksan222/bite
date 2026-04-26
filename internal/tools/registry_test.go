@@ -308,6 +308,28 @@ func TestValidate_defaultTypeMismatch_fails(t *testing.T) {
 	assert.Error(t, tt.validate())
 }
 
+func TestTool_Long_prefersDescribeDynamic(t *testing.T) {
+	tt := noopTool("d")
+	tt.Description = "static"
+	tt.DescribeDynamic = func() string { return "dynamic" }
+	assert.Equal(t, "dynamic", tt.Long())
+}
+
+func TestTool_Long_fallsBackToDescription(t *testing.T) {
+	tt := noopTool("d")
+	tt.Description = "static"
+	// DescribeDynamic returns empty → fall back to Description rather than
+	// emitting a blank help text.
+	tt.DescribeDynamic = func() string { return "" }
+	assert.Equal(t, "static", tt.Long())
+}
+
+func TestTool_Long_noDynamicReturnsDescription(t *testing.T) {
+	tt := noopTool("d")
+	tt.Description = "static"
+	assert.Equal(t, "static", tt.Long())
+}
+
 func TestValidate_requiredWithDefault_fails(t *testing.T) {
 	// Required + Default is contradictory — the default is unreachable.
 	tt := noopTool("contradict")
