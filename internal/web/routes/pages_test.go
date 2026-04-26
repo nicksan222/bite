@@ -146,6 +146,10 @@ func TestPages_chatFormWiring(t *testing.T) {
 		"keydown handler must call requestSubmit so form validation still runs")
 	require.Contains(t, got, `getElementById('chat-empty')?.remove()`,
 		"first submit must remove the empty-state welcome so it doesn't sit on top of the transcript")
+	require.Contains(t, got, `event.detail.successful`,
+		"after-request must reset the form ONLY on success — failed submits should leave the typed message intact")
+	require.Contains(t, got, `window.scrollTo`,
+		"after-swap must scroll to the bottom so the new bubble is visible")
 }
 
 // TestPages_mealsFormWiring locks in the load-bearing attributes on
