@@ -76,6 +76,17 @@ func TestSetGoals_storeErrorOnLoad(t *testing.T) {
 	require.Error(t, err)
 }
 
+func TestSetGoals_setOnlyError(t *testing.T) {
+	// GetGoals succeeds, SetGoals fails — exercises the inner error branch
+	// after merging current and new values.
+	ctx := context.Background()
+	deps := freshDeps(t)
+	deps.Store = &partialFailStore{Storer: deps.Store, setGoalsErr: assert.AnError}
+
+	_, err := MustGet("set_goals").Run(ctx, deps, NewArgs(map[string]any{"kcal": 2000.0}))
+	require.Error(t, err)
+}
+
 func TestSetGoals_zeroClears(t *testing.T) {
 	ctx := context.Background()
 	deps := freshDeps(t)

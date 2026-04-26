@@ -24,3 +24,35 @@ func freshDeps(t *testing.T) Deps {
 		Loc:   time.UTC,
 	}
 }
+
+// partialFailStore embeds a real Storer and lets tests inject errors for
+// individual methods after a successful operation. Used to exercise the
+// "second store call fails after the first succeeds" branches that closing
+// the whole store can't reach (because Close makes everything fail).
+type partialFailStore struct {
+	db.Storer
+	listMessagesErr error
+	deleteMealErr   error
+	setGoalsErr     error
+}
+
+func (p *partialFailStore) ListMessages(ctx context.Context, convID int64) ([]db.Message, error) {
+	if p.listMessagesErr != nil {
+		return nil, p.listMessagesErr
+	}
+	return p.Storer.ListMessages(ctx, convID)
+}
+
+func (p *partialFailStore) DeleteMeal(ctx context.Context, id int64) error {
+	if p.deleteMealErr != nil {
+		return p.deleteMealErr
+	}
+	return p.Storer.DeleteMeal(ctx, id)
+}
+
+func (p *partialFailStore) SetGoals(ctx context.Context, in db.GoalInput) (db.Goal, error) {
+	if p.setGoalsErr != nil {
+		return db.Goal{}, p.setGoalsErr
+	}
+	return p.Storer.SetGoals(ctx, in)
+}

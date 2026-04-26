@@ -64,6 +64,21 @@ func TestConversationShow_renders(t *testing.T) {
 	assert.Contains(t, res.Text, "hello")
 }
 
+func TestConversationShow_listMessagesError(t *testing.T) {
+	// GetConversation succeeds, ListMessages fails — exercises the inner
+	// error branch that "close the whole store" can't reach.
+	ctx := context.Background()
+	deps := freshDeps(t)
+	conv, err := deps.Store.NewConversation(ctx, "m", "")
+	require.NoError(t, err)
+	deps.Store = &partialFailStore{Storer: deps.Store, listMessagesErr: assert.AnError}
+
+	_, err = MustGet("conversation_show").Run(ctx, deps, NewArgs(map[string]any{
+		"conversation_id": float64(conv.ID),
+	}))
+	require.Error(t, err)
+}
+
 func TestConversationShow_missing(t *testing.T) {
 	ctx := context.Background()
 	deps := freshDeps(t)

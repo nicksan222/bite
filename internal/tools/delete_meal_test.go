@@ -48,3 +48,18 @@ func TestDeleteMeal_storeDeleteError(t *testing.T) {
 	}))
 	require.Error(t, err)
 }
+
+func TestDeleteMeal_deleteOnlyError(t *testing.T) {
+	// GetMeal succeeds, DeleteMeal fails — exercises the path between
+	// "found the meal" and "delete it".
+	ctx := context.Background()
+	deps := freshDeps(t)
+	meal, err := deps.Store.SaveMeal(ctx, db.MealInput{Title: "X", Kcal: 100, EatenAt: deps.Now()})
+	require.NoError(t, err)
+	deps.Store = &partialFailStore{Storer: deps.Store, deleteMealErr: assert.AnError}
+
+	_, err = MustGet("delete_meal").Run(ctx, deps, NewArgs(map[string]any{
+		"meal_id": float64(meal.ID),
+	}))
+	require.Error(t, err)
+}
