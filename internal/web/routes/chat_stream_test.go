@@ -93,6 +93,8 @@ func TestChatStart_returnsBubblesWithSSEConnect(t *testing.T) {
 	resp, err := app.Test(postForm("/api/chat", map[string]string{"message": "hi there"}))
 	require.NoError(t, err)
 	require.Equal(t, http.StatusOK, resp.StatusCode)
+	require.Contains(t, resp.Header.Get("Content-Type"), "text/html",
+		"the form's hx-target swaps the response as HTML, not text/plain")
 	body, _ := io.ReadAll(resp.Body)
 	got := string(body)
 	require.Contains(t, got, `chat chat-end`)
