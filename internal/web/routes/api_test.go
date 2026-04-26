@@ -21,8 +21,10 @@ func newApp(d Deps) *fiber.App {
 	return app
 }
 
-// stubDeps supplies a single fixture tool. Pass a custom invoke to
-// override behavior; nil routes invokes back to a no-op.
+// stubDeps supplies a single fixture tool ("echo") via ListTools. The
+// invoke argument becomes Deps.InvokeTool — pass a custom function to
+// drive specific behaviour, or nil to leave InvokeTool unset, which
+// handlers treat as 503 (tool invocation not configured).
 func stubDeps(invoke func(ctx context.Context, name string, raw map[string]any) (Result, error)) Deps {
 	return Deps{
 		ListTools: func() []ToolMeta {
