@@ -4,6 +4,12 @@ on:
   push:
     tags:
       - 'v*'
+  workflow_dispatch:
+    inputs:
+      snapshot:
+        description: 'Snapshot build (no GitHub release, no GHCR push)'
+        type: boolean
+        default: true
 
 # On first release, the GHCR package is created as private. Make it public
 # in the repo's Packages settings if you want anonymous `docker pull` to work.
@@ -50,6 +56,6 @@ jobs:
         with:
           distribution: goreleaser
           version: latest
-          args: release --clean
+          args: release --clean ${{ inputs.snapshot && '--snapshot' || '' }}
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
