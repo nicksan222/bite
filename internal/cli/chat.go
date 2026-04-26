@@ -31,19 +31,20 @@ no model call). Type /help to list every available slash command.`,
 }
 
 // runChat is also called by the root command (bite with no args). All the
-// orchestration helpers (PrepareSession, NewChatPersister, Dispatch) live in
-// internal/tools so this file stays a thin TUI launcher.
+// orchestration helpers (LoadConfig, OpenStore, OpenAIClient, PrepareSession,
+// NewChatPersister, Dispatch) live in internal/tools so this file stays a
+// thin TUI launcher.
 func runChat(ctx context.Context, resumeID int64) error {
-	cfg, err := loadConfig()
+	cfg, err := tools.LoadConfig()
 	if err != nil {
 		return err
 	}
-	store, err := openStore(ctx, cfg)
+	store, err := tools.OpenStore(ctx, cfg)
 	if err != nil {
 		return err
 	}
 	defer store.Close()
-	client, err := openAIClient(ctx, cfg)
+	client, err := tools.OpenAIClient(ctx, cfg)
 	if err != nil {
 		return err
 	}
