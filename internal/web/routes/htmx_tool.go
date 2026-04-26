@@ -62,24 +62,24 @@ func htmlError(c fiber.Ctx, status int, msg string) error {
 // auto-escapes every {{ .X }} interpolation in HTML context, so adding a
 // new field cannot accidentally introduce an XSS hole. Tailwind / daisyUI
 // classes keep the fragment visually consistent with the dashboard.
-var resultTmpl = template.Must(template.New("result").Parse(
-	`<div>` +
-		`{{- if .Text -}}` +
-		`<pre class="font-mono text-sm whitespace-pre-wrap leading-relaxed">{{.Text}}</pre>` +
-		`{{- end -}}` +
-		`{{- with .Table -}}` +
-		`{{- if .Headers -}}` +
-		`<div class="overflow-x-auto mt-2"><table class="table table-sm">` +
-		`<thead><tr>{{range .Headers}}<th>{{.}}</th>{{end}}</tr></thead>` +
-		`<tbody>{{range .Rows}}<tr>{{range .}}<td>{{.}}</td>{{end}}</tr>{{end}}</tbody>` +
-		`{{- if .Footer -}}` +
-		`<tfoot><tr>{{range .Footer}}<td>{{.}}</td>{{end}}</tr></tfoot>` +
-		`{{- end -}}` +
-		`</table></div>` +
-		`{{- end -}}` +
-		`{{- end -}}` +
-		`</div>`,
-))
+// {{- -}} trims surrounding whitespace so the rendered fragment has no
+// extra blanks between elements.
+var resultTmpl = template.Must(template.New("result").Parse(`<div>
+	{{- if .Text -}}
+		<pre class="font-mono text-sm whitespace-pre-wrap leading-relaxed">{{.Text}}</pre>
+	{{- end -}}
+	{{- with .Table -}}
+		{{- if .Headers -}}
+			<div class="overflow-x-auto mt-2"><table class="table table-sm">
+				<thead><tr>{{range .Headers}}<th>{{.}}</th>{{end}}</tr></thead>
+				<tbody>{{range .Rows}}<tr>{{range .}}<td>{{.}}</td>{{end}}</tr>{{end}}</tbody>
+				{{- if .Footer -}}
+					<tfoot><tr>{{range .Footer}}<td>{{.}}</td>{{end}}</tr></tfoot>
+				{{- end -}}
+			</table></div>
+		{{- end -}}
+	{{- end -}}
+</div>`))
 
 // renderResultHTML produces the HTML fragment HTMX swaps in.
 func renderResultHTML(r Result) string {
