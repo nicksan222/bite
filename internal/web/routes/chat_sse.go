@@ -37,9 +37,11 @@ func setSSEHeaders(c fiber.Ctx) {
 // client-disconnect (Flush failure), or when the channel closes
 // without a Done event — i.e. any path the session shouldn't record.
 //
-// Every termination path emits both `event: error` (when applicable)
-// and `event: done`, so the browser's sse-close="done" hook fires
-// cleanly regardless of how the stream ended.
+// Every termination path that still has a live wire emits a terminating
+// `event: done` (preceded by `event: error` for failure cases), so the
+// browser's sse-close="done" hook fires cleanly. The exception is the
+// client-disconnect path: the writer is already broken, so emitting
+// more is pointless.
 //
 // The deferred Flush guarantees the terminal events reach the wire —
 // without it we would rely on the SendStreamWriter caller flushing on
