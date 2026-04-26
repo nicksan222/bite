@@ -302,8 +302,125 @@ func TestLayout_smallDimensions(t *testing.T) {
 
 func TestRenderTurn_unknownRole(t *testing.T) {
 	m := newModel(&testStreamer{}, nil, nil)
-	result := m.renderTurn("system", "some system content")
+	result := m.renderTurn("system", "some system content", nil)
 	assert.Contains(t, result, "system")
+}
+
+// ─── tool step tests ──────────────────────────────────────────────────────────
+
+func TestApplyStep_appendsThenUpdatesByID(t *testing.T) {
+	m := newModel(&testStreamer{}, nil, nil)
+
+	m.applyStep(ai.ToolStep{ID: "c1", Name: "log_meal", Arguments: `{"food":"pasta"}`})
+	require.Len(t, m.pendingSteps, 1)
+	assert.False(t, m.pendingSteps[0].finished)
+	assert.Empty(t, m.pendingSteps[0].result)
+
+	// Same ID → updates the existing entry, doesn't append a duplicate.
+	m.applyStep(ai.ToolStep{
+		ID: "c1", Name: "log_meal",
+		Arguments: `{"food":"pasta"}`,
+		Result:    "logged",
+		Finished:  true,
+	})
+	require.Len(t, m.pendingSteps, 1, "same-ID step should update in place")
+	assert.True(t, m.pendingSteps[0].finished)
+	assert.Equal(t, "logged", m.pendingSteps[0].result)
+}
+
+func TestApplyStep_distinctIDsStack(t *testing.T) {
+	m := newModel(&testStreamer{}, nil, nil)
+	m.applyStep(ai.ToolStep{ID: "c1", Name: "first"})
+	m.applyStep(ai.ToolStep{ID: "c2", Name: "second"})
+	require.Len(t, m.pendingSteps, 2)
+	assert.Equal(t, "first", m.pendingSteps[0].name)
+	assert.Equal(t, "second", m.pendingSteps[1].name)
+}
+
+func TestUpdate_streamStep_appendsToPending(t *testing.T) {
+	m := newModel(&testStreamer{}, nil, nil)
+	m.streaming = true
+
+	got, _ := update(t, m, streamStepMsg{step: ai.ToolStep{
+		ID: "c1", Name: "log_meal", Arguments: `{"food":"pasta"}`,
+	}})
+	require.Len(t, got.pendingSteps, 1)
+	assert.Equal(t, "log_meal", got.pendingSteps[0].name)
+}
+
+func TestUpdate_streamDone_movesPendingStepsToHistory(t *testing.T) {
+	p := &testPersister{}
+	m := newModel(&testStreamer{}, p, nil)
+	m.streaming = true
+	m.pendingSteps = []toolStep{{id: "c1", name: "log_meal", finished: true, result: "ok"}}
+
+	got, _ := update(t, m, streamDoneMsg{full: "done"})
+	require.Len(t, got.history, 1)
+	saved := got.stepsByTurn[len(got.history)-1]
+	require.Len(t, saved, 1, "pending steps should attach to the just-finished assistant turn")
+	assert.Equal(t, "log_meal", saved[0].name)
+	assert.Empty(t, got.pendingSteps, "pending should be flushed after Done")
+}
+
+func TestUpdate_streamErr_clearsPendingSteps(t *testing.T) {
+	m := newModel(&testStreamer{}, nil, nil)
+	m.streaming = true
+	m.pendingSteps = []toolStep{{id: "c1", name: "x"}}
+
+	got, _ := update(t, m, streamErrMsg{err: errors.New("boom")})
+	assert.Empty(t, got.pendingSteps, "errored stream must drop in-flight steps")
+}
+
+func TestReadNext_toolStepEvent(t *testing.T) {
+	m := newModel(&testStreamer{}, nil, nil)
+	ch := make(chan ai.StreamEvent, 1)
+	ch <- ai.StreamEvent{ToolStep: &ai.ToolStep{ID: "c1", Name: "log_meal"}}
+	m.streamCh = ch
+
+	msg := m.readNext()()
+	step, ok := msg.(streamStepMsg)
+	require.True(t, ok, "expected streamStepMsg, got %T", msg)
+	assert.Equal(t, "log_meal", step.step.Name)
+}
+
+func TestRenderStep_runningShowsCallingPrefix(t *testing.T) {
+	m := newModel(&testStreamer{}, nil, nil)
+	out := m.renderStep(toolStep{id: "c1", name: "log_meal", args: `{"f":"pasta"}`})
+	assert.Contains(t, out, "calling")
+	assert.Contains(t, out, "log_meal")
+}
+
+func TestRenderStep_finishedShowsResult(t *testing.T) {
+	m := newModel(&testStreamer{}, nil, nil)
+	out := m.renderStep(toolStep{
+		id: "c1", name: "log_meal", args: `{"f":"pasta"}`,
+		result: "logged: pasta", finished: true,
+	})
+	assert.Contains(t, out, "log_meal")
+	assert.Contains(t, out, "logged: pasta")
+}
+
+func TestSummarize_collapsesWhitespaceAndTruncates(t *testing.T) {
+	assert.Empty(t, summarize("  \n\t ", 10))
+	assert.Equal(t, "a b c", summarize("a\n  b\tc", 10))
+	long := strings.Repeat("x", 200)
+	got := summarize(long, 50)
+	assert.LessOrEqual(t, len([]rune(got)), 50, "rune length should respect the cap")
+	assert.True(t, strings.HasSuffix(got, "…"), "truncation should be marked with an ellipsis")
+}
+
+func TestRenderTranscript_includesPersistedSteps(t *testing.T) {
+	m := newModel(&testStreamer{}, nil, []ai.Message{
+		{Role: ai.RoleUser, Content: "log my pasta"},
+		{Role: ai.RoleAssistant, Content: "Done."},
+	})
+	m, _ = update(t, m, tea.WindowSizeMsg{Width: 80, Height: 30})
+	m.stepsByTurn[1] = []toolStep{{
+		id: "c1", name: "log_meal",
+		args: `{"f":"pasta"}`, result: "logged", finished: true,
+	}}
+	out := m.renderTranscript()
+	assert.Contains(t, out, "log_meal", "persisted tool step should appear in transcript")
 }
 
 // ─── View tests ───────────────────────────────────────────────────────────────

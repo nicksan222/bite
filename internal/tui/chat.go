@@ -53,8 +53,20 @@ func New(ctx context.Context, client ai.Streamer, store Persister, history []ai.
 type streamDeltaMsg struct{ delta string }
 type streamDoneMsg struct{ full string }
 type streamErrMsg struct{ err error }
+type streamStepMsg struct{ step ai.ToolStep }
 
 // ─── model ───────────────────────────────────────────────────────────────────
+
+// toolStep is the TUI's per-turn record of one tool invocation. It mirrors
+// ai.ToolStep but stays inside the TUI package so the renderer can format
+// the lines without exposing internal state.
+type toolStep struct {
+	id       string
+	name     string
+	args     string
+	result   string
+	finished bool
+}
 
 type model struct {
 	ctx        context.Context
@@ -68,10 +80,12 @@ type model struct {
 	spinner  spinner.Model
 	renderer *glamour.TermRenderer
 
-	streaming bool
-	pending   string // accumulated assistant text for the in-flight turn
-	streamCh  <-chan ai.StreamEvent
-	slash     SlashHandler
+	streaming    bool
+	pending      string // accumulated assistant text for the in-flight turn
+	pendingSteps []toolStep
+	stepsByTurn  map[int][]toolStep // history index → tool steps for that assistant turn
+	streamCh     <-chan ai.StreamEvent
+	slash        SlashHandler
 
 	width, height int
 	err           error
@@ -98,15 +112,16 @@ func initialModel(ctx context.Context, client ai.Streamer, store Persister, hist
 	)
 
 	return model{
-		ctx:        ctx,
-		client:     client,
-		store:      store,
-		history:    history,
-		streamOpts: streamOpts,
-		input:      ta,
-		viewport:   vp,
-		spinner:    sp,
-		renderer:   r,
+		ctx:         ctx,
+		client:      client,
+		store:       store,
+		history:     history,
+		streamOpts:  streamOpts,
+		input:       ta,
+		viewport:    vp,
+		spinner:     sp,
+		renderer:    r,
+		stepsByTurn: map[int][]toolStep{},
 	}
 }
 
@@ -145,12 +160,22 @@ func (m model) Update(raw tea.Msg) (tea.Model, tea.Cmd) {
 		m.viewport.GotoBottom()
 		return m, m.readNext()
 
+	case streamStepMsg:
+		m.applyStep(msg.step)
+		m.viewport.SetContent(m.renderTranscript())
+		m.viewport.GotoBottom()
+		return m, m.readNext()
+
 	case streamDoneMsg:
 		final := msg.full
 		if final == "" {
 			final = m.pending
 		}
 		m.history = append(m.history, ai.Message{Role: ai.RoleAssistant, Content: final})
+		if len(m.pendingSteps) > 0 {
+			m.stepsByTurn[len(m.history)-1] = m.pendingSteps
+			m.pendingSteps = nil
+		}
 		if m.store != nil {
 			if err := m.store.AppendAssistant(m.ctx, final); err != nil {
 				m.err = fmt.Errorf("save message: %w", err)
@@ -168,6 +193,7 @@ func (m model) Update(raw tea.Msg) (tea.Model, tea.Cmd) {
 		m.streaming = false
 		m.streamCh = nil
 		m.pending = ""
+		m.pendingSteps = nil
 		m.viewport.SetContent(m.renderTranscript())
 		m.viewport.GotoBottom()
 		return m, nil
@@ -231,40 +257,114 @@ func (m *model) layout() {
 }
 
 func (m model) renderTranscript() string {
-	var b strings.Builder
+	var blocks []string
 
-	for _, msg := range m.history {
-		b.WriteString(m.renderTurn(msg.Role, msg.Content))
-		b.WriteString("\n")
+	for i, msg := range m.history {
+		var steps []toolStep
+		if msg.Role == ai.RoleAssistant {
+			steps = m.stepsByTurn[i]
+		}
+		blocks = append(blocks, m.renderTurn(msg.Role, msg.Content, steps))
 	}
 
-	if m.streaming || m.pending != "" {
-		b.WriteString(m.renderTurn(ai.RoleAssistant, m.pending))
-		b.WriteString("\n")
+	if m.streaming || m.pending != "" || len(m.pendingSteps) > 0 {
+		blocks = append(blocks, m.renderTurn(ai.RoleAssistant, m.pending, m.pendingSteps))
 	}
 
-	return b.String()
+	// Blank line between turns gives the bubbles room to breathe; \n after
+	// the last block prevents the viewport from clipping the final line.
+	return strings.Join(blocks, "\n\n") + "\n"
 }
 
-func (m model) renderTurn(role ai.Role, content string) string {
-	var label string
+func (m model) renderTurn(role ai.Role, content string, steps []toolStep) string {
 	switch role {
 	case ai.RoleUser:
-		label = userStyle.Render("you")
+		return m.renderUserBubble(content)
 	case ai.RoleAssistant:
-		label = assistantStyle.Render("bite")
+		return m.renderAssistantBubble(content, steps)
 	default:
-		label = string(role)
+		// Unknown roles (e.g. system) render with a plain label, no bubble.
+		return string(role) + "\n" + content
 	}
+}
 
+func (m model) renderUserBubble(content string) string {
+	body := userBodyStyle.Render(content)
+	inner := userLabelStyle.Render("you") + "\n" + body
+	return prefixLines(inner, userBarStyle.Render("┃"))
+}
+
+func (m model) renderAssistantBubble(content string, steps []toolStep) string {
 	body := content
-	if role == ai.RoleAssistant && m.renderer != nil && content != "" {
+	if m.renderer != nil && content != "" {
 		if rendered, err := m.renderer.Render(content); err == nil {
 			body = strings.TrimRight(rendered, "\n")
 		}
 	}
 
-	return fmt.Sprintf("%s\n%s", label, body)
+	parts := []string{assistantLabelStyle.Render("bite")}
+	if len(steps) > 0 {
+		parts = append(parts, m.renderSteps(steps))
+	}
+	if body != "" {
+		parts = append(parts, body)
+	}
+	return prefixLines(strings.Join(parts, "\n"), assistantBarStyle.Render("┃"))
+}
+
+// prefixLines puts `prefix ` in front of every line of s. We do this instead
+// of wrapping in lipgloss.Border because the body may contain glamour-
+// rendered ANSI; lipgloss re-flow on pre-styled content leaks raw control
+// chars (\x01, \x02…) on some terminals.
+func prefixLines(s, prefix string) string {
+	lines := strings.Split(s, "\n")
+	for i, line := range lines {
+		lines[i] = prefix + " " + line
+	}
+	return strings.Join(lines, "\n")
+}
+
+func (m model) renderSteps(steps []toolStep) string {
+	lines := make([]string, 0, len(steps))
+	for _, s := range steps {
+		lines = append(lines, m.renderStep(s))
+	}
+	return strings.Join(lines, "\n")
+}
+
+func (m model) renderStep(s toolStep) string {
+	args := summarize(s.args, 80)
+	if !s.finished {
+		head := toolStepRunningStyle.Render("↻ calling " + s.name)
+		if args != "" {
+			head += toolStepResultStyle.Render(" · " + args)
+		}
+		return head
+	}
+	head := toolStepDoneStyle.Render("↳ " + s.name)
+	if args != "" {
+		head += toolStepResultStyle.Render(" · " + args)
+	}
+	if result := summarize(s.result, 120); result != "" {
+		head += "\n  " + toolStepResultStyle.Render("→ "+result)
+	}
+	return head
+}
+
+// summarize collapses whitespace and truncates s (counted in runes) for
+// inline display in the transcript. JSON args and tool results are often
+// multi-line; the goal here is a single, readable hint — not a faithful echo.
+func summarize(s string, max int) string {
+	s = strings.TrimSpace(s)
+	if s == "" {
+		return ""
+	}
+	s = strings.Join(strings.Fields(s), " ")
+	rs := []rune(s)
+	if len(rs) > max {
+		return string(rs[:max-1]) + "…"
+	}
+	return s
 }
 
 func (m model) send(text string) (tea.Model, tea.Cmd) {
@@ -343,10 +443,33 @@ func (m model) readNext() tea.Cmd {
 			return streamErrMsg{err: ev.Err}
 		case ev.Done:
 			return streamDoneMsg{full: ev.Final}
+		case ev.ToolStep != nil:
+			return streamStepMsg{step: *ev.ToolStep}
 		default:
 			return streamDeltaMsg{delta: ev.Delta}
 		}
 	}
+}
+
+// applyStep folds a ToolStep event into m.pendingSteps. The "started" event
+// appends a new entry; the matching "finished" event (same ID) updates the
+// existing one with the result, so the UI shows one row per call rather than
+// stacking duplicates.
+func (m *model) applyStep(s ai.ToolStep) {
+	for i := range m.pendingSteps {
+		if m.pendingSteps[i].id == s.ID {
+			m.pendingSteps[i].result = s.Result
+			m.pendingSteps[i].finished = s.Finished
+			return
+		}
+	}
+	m.pendingSteps = append(m.pendingSteps, toolStep{
+		id:       s.ID,
+		name:     s.Name,
+		args:     s.Arguments,
+		result:   s.Result,
+		finished: s.Finished,
+	})
 }
 
 func welcomeText() string {
