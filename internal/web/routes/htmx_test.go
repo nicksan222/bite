@@ -2,6 +2,7 @@ package routes
 
 import (
 	"context"
+	"errors"
 	"io"
 	"net/http"
 	"net/http/httptest"
@@ -58,6 +59,25 @@ func TestHTMX_htmlAlert_escapes(t *testing.T) {
 	require.Contains(t, out, `alert alert-error`)
 	require.NotContains(t, out, `<script>`)
 	require.Contains(t, out, `&lt;script&gt;`)
+}
+
+// TestHTMX_tool_runErrorReturnsHTMLAlert covers the non-NotFound error
+// branch — an arbitrary tool failure must surface as a 400 with an HTML
+// alert fragment (not JSON), since the response is hx-swapped into the
+// DOM.
+func TestHTMX_tool_runErrorReturnsHTMLAlert(t *testing.T) {
+	app := newApp(Deps{
+		InvokeTool: func(_ context.Context, _ string, _ map[string]any) (Result, error) {
+			return Result{}, errors.New("kcal must be positive")
+		},
+	})
+	resp, err := app.Test(httptest.NewRequest(http.MethodPost, "/htmx/tool/log_meal", nil))
+	require.NoError(t, err)
+	require.Equal(t, http.StatusBadRequest, resp.StatusCode)
+	require.Contains(t, resp.Header.Get("Content-Type"), "text/html")
+	body, _ := io.ReadAll(resp.Body)
+	require.Contains(t, string(body), `alert alert-error`)
+	require.Contains(t, string(body), `kcal must be positive`)
 }
 
 // TestHTMX_unconfiguredDepsReturnsHTML pins that an HTMX endpoint never
