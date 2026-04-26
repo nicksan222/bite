@@ -41,6 +41,10 @@ type pendingTurn struct {
 // because turns are short-lived and the dashboard is single-user.
 var turnStore = &turnStash{pending: map[string]pendingTurn{}}
 
+// turnStash is the per-process map of pending POST→SSE handoffs. The
+// mutex covers the map and the per-entry expires field. Same coarse
+// locking story as sessionStore — turns are short-lived, ops are
+// O(small), and contention is bounded by the single browser tab.
 type turnStash struct {
 	mu      sync.Mutex
 	pending map[string]pendingTurn

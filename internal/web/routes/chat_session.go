@@ -32,11 +32,17 @@ const (
 // conversation wouldn't survive an editor save anyway with `make web-dev`.
 var chatSessionStore = &sessionStore{sessions: map[string]*chatSession{}}
 
+// chatSession is one browser's conversation: the chronological list of
+// turns plus a last-touch timestamp the prune sweep uses.
 type chatSession struct {
 	history []ai.Message
 	last    time.Time
 }
 
+// sessionStore is the per-process map of chat sessions. A coarse mutex
+// is fine because the dashboard is single-user and operations are
+// O(small): bumping last on a known ID, snapshotting history, or
+// iterating a small map to prune.
 type sessionStore struct {
 	mu       sync.Mutex
 	sessions map[string]*chatSession
