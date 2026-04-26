@@ -84,6 +84,21 @@ func TestMeta_everyCheckSurfacesInDoctor(t *testing.T) {
 	}
 }
 
+// TestMeta_everyParamHasDesc walks every registered tool's Params and asserts
+// each one carries a non-empty Desc. The Desc shows up in the AI tool schema,
+// `bite <tool> --help`, and slash-command help — a missing one silently
+// degrades all three. Enforced as a meta-test (not in validate()) so test
+// fixtures can construct minimal Params without ceremony.
+func TestMeta_everyParamHasDesc(t *testing.T) {
+	for _, tool := range All() {
+		for _, p := range tool.Params {
+			t.Run(tool.Name+"."+p.Name, func(t *testing.T) {
+				assert.NotEmpty(t, p.Desc, "param %q on tool %q needs a Desc", p.Name, tool.Name)
+			})
+		}
+	}
+}
+
 // TestMeta_dropANewToolReachesEverySurface proves the package's headline
 // promise: registering a brand-new Tool surfaces it on every adapter
 // without touching any other code. If a future refactor breaks the
