@@ -76,6 +76,19 @@ func TestCobraDepsProvider_configError(t *testing.T) {
 	require.Error(t, err)
 }
 
+func TestCobraDepsProvider_storeOpenError(t *testing.T) {
+	// Pointing BITE_DB at a directory makes db.Open fail (it'd try to open
+	// the dir as a SQLite file and ping fails).
+	t.Setenv("BITE_DB", "/tmp")
+	t.Setenv("BITE_MODEL", "claude-haiku-4-5")
+	t.Setenv("BITE_MAX_TOKENS", "")
+	t.Setenv("ANTHROPIC_API_KEY", "sk-test-fake")
+	t.Setenv("XDG_DATA_HOME", t.TempDir())
+
+	_, _, err := CobraDepsProvider(context.Background())
+	require.Error(t, err)
+}
+
 func TestLazyAI_streamPropagatesAuthError(t *testing.T) {
 	// No API key → openAIClient returns error → lazyAI.Stream surfaces it.
 	la := lazyAI{cfg: config.Config{Model: "claude-x", MaxTokens: 1}}
