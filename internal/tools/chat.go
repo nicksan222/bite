@@ -55,8 +55,6 @@ func runChat(ctx context.Context, deps Deps, args Args) (Result, error) {
 	prog := tui.New(ctx, deps.AI, persist, history,
 		ChatStreamOptions(deps),
 		tui.WithSlashHandler(NewSlashHandler(deps)))
-	if _, err := prog.Run(); err != nil {
-		return Result{}, err
-	}
-	return Result{}, nil
+	_, err = prog.Run()
+	return Result{}, err
 }
