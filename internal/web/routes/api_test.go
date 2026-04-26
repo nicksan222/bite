@@ -131,23 +131,28 @@ func requireJSONError(t *testing.T, resp *http.Response, status int, wantSubstr 
 
 // TestAPI_unconfiguredDeps locks in the contract that every surface
 // returns 503 (not 500, not 404) when its required Deps closure is
-// missing. Catches a regression where a new handler forgets the nil-check.
+// missing, AND that each surface emits its native envelope (JSON for
+// the JSON API, HTML alert for the HTMX surfaces). Catches both
+// nil-check regressions and content-type drift.
 func TestAPI_unconfiguredDeps(t *testing.T) {
 	app := newApp(Deps{})
 	cases := []struct {
-		name string
-		req  *http.Request
+		name        string
+		req         *http.Request
+		contentType string
 	}{
-		{"GET /api/tools", httptest.NewRequest(http.MethodGet, "/api/tools", nil)},
-		{"POST /api/tools/:name", httptest.NewRequest(http.MethodPost, "/api/tools/x", nil)},
-		{"POST /api/chat", postJSON("/api/chat", `{"message":"hi"}`)},
-		{"GET /htmx/tool/:name", httptest.NewRequest(http.MethodGet, "/htmx/tool/x", nil)},
+		{"GET /api/tools", httptest.NewRequest(http.MethodGet, "/api/tools", nil), "application/json"},
+		{"POST /api/tools/:name", httptest.NewRequest(http.MethodPost, "/api/tools/x", nil), "application/json"},
+		{"POST /api/chat", postJSON("/api/chat", `{"message":"hi"}`), "text/html"},
+		{"GET /htmx/tool/:name", httptest.NewRequest(http.MethodGet, "/htmx/tool/x", nil), "text/html"},
 	}
 	for _, c := range cases {
 		t.Run(c.name, func(t *testing.T) {
 			resp, err := app.Test(c.req)
 			require.NoError(t, err)
 			require.Equal(t, http.StatusServiceUnavailable, resp.StatusCode)
+			require.Contains(t, resp.Header.Get("Content-Type"), c.contentType,
+				"each surface must emit its native envelope on 503, not coerce to JSON")
 		})
 	}
 }
