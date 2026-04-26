@@ -1,7 +1,6 @@
 package routes
 
 import (
-	"errors"
 	"net/http"
 
 	"github.com/gofiber/fiber/v3"
@@ -25,11 +24,7 @@ func invokeTool(d Deps) fiber.Handler {
 
 		res, err := d.InvokeTool(c.Context(), name, raw)
 		if err != nil {
-			var nf NotFoundError
-			if errors.As(err, &nf) {
-				return jsonError(c, http.StatusNotFound, err.Error())
-			}
-			return jsonError(c, http.StatusBadRequest, err.Error())
+			return jsonError(c, toolErrorStatus(err), err.Error())
 		}
 		return c.JSON(res)
 	}

@@ -2,6 +2,7 @@ package routes
 
 import (
 	"bytes"
+	"errors"
 	"net/http"
 
 	"github.com/gofiber/fiber/v3"
@@ -12,6 +13,19 @@ import (
 // stays consistent across surfaces.
 func jsonError(c fiber.Ctx, status int, msg string) error {
 	return c.Status(status).JSON(fiber.Map{"error": msg})
+}
+
+// toolErrorStatus maps an InvokeTool error to its HTTP status. A
+// NotFoundError means the tool name was unknown (404); anything else
+// is treated as a client-side problem with the call (400). Both
+// invokeTool and htmxTool reach for this so their status mapping can't
+// drift.
+func toolErrorStatus(err error) int {
+	var nf NotFoundError
+	if errors.As(err, &nf) {
+		return http.StatusNotFound
+	}
+	return http.StatusBadRequest
 }
 
 // render executes the layout pre-bound with the named page's "content"
