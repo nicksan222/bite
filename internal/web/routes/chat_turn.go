@@ -27,18 +27,14 @@ type pendingTurn struct {
 // turnStore is the per-process map of pending turns. Each entry is read
 // at most once; the GET handler deletes on pop. A coarse mutex is fine
 // because turns are short-lived and the dashboard is single-user.
-var turnStore = newTurnStore()
+var turnStore = &turnStash{pending: map[string]pendingTurn{}}
 
-type turnStoreT struct {
+type turnStash struct {
 	mu      sync.Mutex
 	pending map[string]pendingTurn
 }
 
-func newTurnStore() *turnStoreT {
-	return &turnStoreT{pending: map[string]pendingTurn{}}
-}
-
-func (s *turnStoreT) stash(t pendingTurn) string {
+func (s *turnStash) stash(t pendingTurn) string {
 	s.mu.Lock()
 	defer s.mu.Unlock()
 	s.pruneLocked()
@@ -48,7 +44,7 @@ func (s *turnStoreT) stash(t pendingTurn) string {
 	return id
 }
 
-func (s *turnStoreT) pop(id string) (pendingTurn, bool) {
+func (s *turnStash) pop(id string) (pendingTurn, bool) {
 	s.mu.Lock()
 	defer s.mu.Unlock()
 	t, ok := s.pending[id]
@@ -62,7 +58,7 @@ func (s *turnStoreT) pop(id string) (pendingTurn, bool) {
 	return t, true
 }
 
-func (s *turnStoreT) pruneLocked() {
+func (s *turnStash) pruneLocked() {
 	now := time.Now()
 	for id, t := range s.pending {
 		if now.After(t.expires) {
