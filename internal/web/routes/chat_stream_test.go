@@ -148,7 +148,10 @@ func TestChatTurn_idIsSingleUse(t *testing.T) {
 	first, err := app.Test(httptest.NewRequest(http.MethodGet, chatStreamPathPrefix+turnID, nil))
 	require.NoError(t, err)
 	require.Equal(t, http.StatusOK, first.StatusCode)
-	_, _ = io.ReadAll(first.Body)
+	firstBody, _ := io.ReadAll(first.Body)
+	require.Contains(t, string(firstBody), "event: delta",
+		"first GET must successfully stream the model output")
+	require.Contains(t, string(firstBody), "data: x")
 
 	second, err := app.Test(httptest.NewRequest(http.MethodGet, chatStreamPathPrefix+turnID, nil))
 	require.NoError(t, err)
