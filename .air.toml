@@ -13,7 +13,7 @@ tmp_dir = "tmp"
 
 [build]
   cmd = "go build -o ./tmp/bite ./cmd/bite"
-  bin = "./tmp/bite"
+  entrypoint = "./tmp/bite"
   args_bin = ["web"]
   include_ext = ["go", "html", "css", "js"]
   exclude_dir = ["tmp", "bin", "dist", ".git", ".claude", ".agents", "node_modules"]
