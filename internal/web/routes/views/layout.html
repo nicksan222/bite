@@ -4,6 +4,10 @@
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <title>bite — {{.Title}}</title>
+  <!-- Treat 4xx/5xx responses as swap-able too. Our htmx and chat
+       endpoints return HTML alerts on validation/tool failures, and
+       htmx's default "swap only on 2xx/3xx" would drop them silently. -->
+  <meta name="htmx-config" content='{"responseHandling":[{"code":"204","swap":false},{"code":"[23]..","swap":true},{"code":"[45]..","swap":true,"error":true}]}'>
   <!-- daisyUI's bare bundle only ships light + dark themes; themes.css
        adds every other built-in (night, dim, business, etc.) so changing
        data-theme above is enough to swap the look. -->

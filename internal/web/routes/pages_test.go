@@ -79,6 +79,23 @@ func TestPages_activeNavMarked(t *testing.T) {
 	}
 }
 
+// TestPages_htmxConfigEnables4xxSwap pins that the layout sets the
+// htmx-config meta tag so 4xx/5xx responses still swap into their
+// target. Without this, every htmlError our HTMX surfaces produce
+// (empty chat message, validation failures, AI not configured)
+// would silently drop into htmx:responseError and the user would
+// see nothing happen.
+func TestPages_htmxConfigEnables4xxSwap(t *testing.T) {
+	app := newApp(Deps{})
+	resp, err := app.Test(httptest.NewRequest(http.MethodGet, "/", nil))
+	require.NoError(t, err)
+	body, _ := io.ReadAll(resp.Body)
+	require.Contains(t, string(body), `name="htmx-config"`,
+		"layout must declare htmx-config")
+	require.Contains(t, string(body), `"[45]..","swap":true`,
+		"4xx/5xx responses must be swap-able so error alerts surface")
+}
+
 // TestPages_toolsListsRegistry asserts the tools page renders names
 // returned by the ListTools closure AND that the closure is consulted
 // per request — both load-bearing for "the dashboard reflects the live
