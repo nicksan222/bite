@@ -92,7 +92,6 @@ func parseSlashArgs(t Tool, rest string) (Args, error) {
 	}
 
 	// Fill positional params in declaration order.
-	pi := 0
 	var positionalParams []Param
 	for _, p := range t.Params {
 		if p.Positional {
@@ -102,9 +101,9 @@ func parseSlashArgs(t Tool, rest string) (Args, error) {
 	if len(positionals) > len(positionalParams) {
 		return Args{}, fmt.Errorf("too many positional arguments (got %d, want at most %d)", len(positionals), len(positionalParams))
 	}
-	for ; pi < len(positionals); pi++ {
-		p := positionalParams[pi]
-		v, err := parseString(p.Type, positionals[pi])
+	for i, tok := range positionals {
+		p := positionalParams[i]
+		v, err := parseString(p.Type, tok)
 		if err != nil {
 			return Args{}, fmt.Errorf("argument %q: %w", p.Name, err)
 		}
