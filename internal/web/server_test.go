@@ -1,9 +1,14 @@
 package web
 
 import (
+	"context"
+	"errors"
+	"net"
 	"net/http"
 	"net/http/httptest"
+	"strconv"
 	"testing"
+	"time"
 
 	"github.com/stretchr/testify/require"
 )
@@ -33,4 +38,54 @@ func TestNew_endToEnd(t *testing.T) {
 func TestConfig_Addr(t *testing.T) {
 	require.Equal(t, "127.0.0.1:8787", Config{}.Addr())
 	require.Equal(t, "0.0.0.0:9000", Config{Host: "0.0.0.0", Port: 9000}.Addr())
+}
+
+// TestServer_ListenShutsDownOnCancel boots Listen on a random local port
+// and cancels its context. Listen must unwind through ShutdownWithContext
+// and return ctx.Err() promptly — proving the goroutine + select + shutdown
+// orchestration in server.go works end-to-end without leaking the
+// listener goroutine.
+func TestServer_ListenShutsDownOnCancel(t *testing.T) {
+	port := freePort(t)
+	srv := New(Deps{})
+
+	ctx, cancel := context.WithCancel(context.Background())
+	done := make(chan error, 1)
+	go func() { done <- srv.Listen(ctx, Config{Host: "127.0.0.1", Port: port}) }()
+
+	// Wait until the listener actually binds before cancelling — otherwise
+	// the test races between Listen reaching app.Listen and ctx being done.
+	waitForListen(t, port)
+	cancel()
+
+	select {
+	case err := <-done:
+		require.True(t, errors.Is(err, context.Canceled), "expected ctx.Canceled, got %v", err)
+	case <-time.After(3 * time.Second):
+		t.Fatal("Listen did not return after ctx cancel within 3s")
+	}
+}
+
+func freePort(t *testing.T) int {
+	t.Helper()
+	l, err := net.Listen("tcp", "127.0.0.1:0")
+	require.NoError(t, err)
+	port := l.Addr().(*net.TCPAddr).Port
+	require.NoError(t, l.Close())
+	return port
+}
+
+func waitForListen(t *testing.T, port int) {
+	t.Helper()
+	addr := net.JoinHostPort("127.0.0.1", strconv.Itoa(port))
+	deadline := time.Now().Add(2 * time.Second)
+	for time.Now().Before(deadline) {
+		conn, err := net.DialTimeout("tcp", addr, 50*time.Millisecond)
+		if err == nil {
+			_ = conn.Close()
+			return
+		}
+		time.Sleep(20 * time.Millisecond)
+	}
+	t.Fatalf("server never bound to %s", addr)
 }
