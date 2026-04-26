@@ -12,7 +12,11 @@ func Register(app *fiber.App, d Deps) {
 	api := app.Group("/api")
 	api.Get("/tools", listTools(d))
 	api.Post("/tools/:name", invokeTool(d))
-	api.Post("/chat", chatStream(d))
+	// Chat is two endpoints: hx-post lands the message and returns the
+	// HTML scaffold; htmx-ext-sse then opens the GET to stream tokens
+	// into the assistant bubble.
+	api.Post("/chat", chatStart(d))
+	api.Get("/chat/stream/:id", chatStream(d))
 
 	htmx := app.Group("/htmx")
 	// One handler for GET (dashboard refresh, hx-get) and POST (form

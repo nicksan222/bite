@@ -10,12 +10,11 @@ import (
 )
 
 // TestStatic_servesEmbeddedAssets locks in that /static/* resolves to
-// the embedded FS — both files referenced by layout.html (htmx.min.js,
-// styles.css) and chat.html (chat.js) must be reachable, otherwise the
-// dashboard renders without its only client-side JS.
+// the embedded FS — every script and stylesheet the layout / chat page
+// references must be reachable, otherwise the dashboard renders broken.
 func TestStatic_servesEmbeddedAssets(t *testing.T) {
 	app := newApp(Deps{})
-	for _, path := range []string{"/static/chat.js", "/static/styles.css", "/static/htmx.min.js"} {
+	for _, path := range []string{"/static/styles.css", "/static/htmx.min.js", "/static/htmx-ext-sse.min.js"} {
 		t.Run(path, func(t *testing.T) {
 			resp, err := app.Test(httptest.NewRequest(http.MethodGet, path, nil))
 			require.NoError(t, err)

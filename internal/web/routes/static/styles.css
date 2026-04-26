@@ -55,3 +55,12 @@
 .htmx-indicator { display: none; }
 .htmx-request .htmx-indicator { display: inline; }
 .htmx-request.htmx-indicator { display: inline; }
+
+/* Chat input grows with its content up to ~12rem. field-sizing is the
+   modern CSS replacement for the textarea-autosize JS dance. Falls back
+   to a fixed-height textarea on browsers without support — the user can
+   still type, just no auto-grow. */
+#chat-input {
+  field-sizing: content;
+  max-block-size: 12rem;
+}
