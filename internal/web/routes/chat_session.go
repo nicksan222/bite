@@ -61,6 +61,9 @@ func (s *sessionStore) ensure(c fiber.Ctx) (string, []ai.Message) {
 		Path:     "/",
 		HTTPOnly: true,
 		SameSite: fiber.CookieSameSiteLaxMode,
+		// Mirror the request scheme: an HTTPS deployment gets a
+		// Secure cookie, local HTTP dev still works.
+		Secure: c.Secure(),
 	})
 	return id, nil
 }
