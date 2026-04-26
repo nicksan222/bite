@@ -56,6 +56,14 @@ internal/
     sqlc/                     # GENERATED — do not edit
     store.go  migrate.go      # Store façade + embedded migration runner
   tui/                        # bubbletea programs (slash handlers come from tools.NewSlashHandler)
+  web/                        # Fiber HTTP surface — HTMX-driven dashboard
+    server.go  aliases.go     # New / Listen, type aliases re-exported from routes/
+    routes/                   # one file per endpoint
+      register.go             # Register(app, deps) — wires every route
+      list_tools.go  invoke_tool.go  chat_stream.go  htmx_tool.go
+      page_dashboard.go  page_chat.go  page_meals.go  page_tools.go  static.go
+      helpers.go  types.go  embed.go
+      views/  static/         # HTML templates, CSS, vendored htmx.min.js
 ```
 
 | Adding… | Drop a file in… | Ritual |
@@ -63,6 +71,7 @@ internal/
 | **Domain action / chat tool / slash command / CLI subcommand** | `internal/tools/<name>.go` (+ `<name>_test.go`) | `tools.Register(...)` in `init()` — auto-wires AI tool spec, cobra command, slash handler, system-prompt entry |
 | **Doctor health check** | `internal/tools/checks_<concern>.go` | `tools.RegisterCheck(...)` in `init()` — auto-extends `bite doctor` and `bite doctor --help` |
 | TUI screen | `internal/tui/<name>.go` (program) + register a launcher Tool in `internal/tools/<name>.go` (use `SkipAI`/`SkipSlash` if cobra-only, like chat) | the cobra-adapter passes `Deps` into your tool's `Run`; build `tui.New(...).Run()` from there |
+| Web page / endpoint | one file per route in `internal/web/routes/<name>.go` (+ `<name>.html` template if it's a page) | one line in `internal/web/routes/register.go`; `bite web` already exposes the registry over HTTP, so per-tool work is rarely needed |
 | DB table | `internal/db/migrations/000N_*.sql` + `internal/db/queries/<entity>.sql` | `make sqlc` |
 | Store method | method on `*db.Store` in `internal/db/store.go` | wrap one or more sqlc calls |
 | Config knob | one struct field with `env:"…"` tags in `internal/config/config.go` | nothing else |
