@@ -3,7 +3,6 @@ package tools
 import (
 	"context"
 	"fmt"
-	"strings"
 )
 
 func init() {
@@ -26,17 +25,5 @@ func runGetGoals(ctx context.Context, deps Deps, _ Args) (Result, error) {
 	if err != nil {
 		return Result{}, fmt.Errorf("get goals: %w", err)
 	}
-	format := func(label string, v *float64) string {
-		if v == nil {
-			return label + ": not set"
-		}
-		return fmt.Sprintf("%s: %.0f", label, *v)
-	}
-	return Result{Text: strings.Join([]string{
-		"Daily targets:",
-		format("  kcal", g.Kcal),
-		format("  protein_g", g.ProteinG),
-		format("  carbs_g", g.CarbsG),
-		format("  fat_g", g.FatG),
-	}, "\n")}, nil
+	return Result{Text: formatGoals("Daily targets:", g)}, nil
 }

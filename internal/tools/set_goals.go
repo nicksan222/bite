@@ -3,7 +3,6 @@ package tools
 import (
 	"context"
 	"fmt"
-	"strings"
 
 	"github.com/nicksan222/bite/internal/db"
 )
@@ -52,20 +51,7 @@ func runSetGoals(ctx context.Context, deps Deps, args Args) (Result, error) {
 	if err != nil {
 		return Result{}, fmt.Errorf("set goals: %w", err)
 	}
-
-	fmtField := func(label string, v *float64) string {
-		if v == nil {
-			return label + ": not set"
-		}
-		return fmt.Sprintf("%s: %.0f", label, *v)
-	}
-	return Result{Text: strings.Join([]string{
-		"Goals updated:",
-		fmtField("  kcal", updated.Kcal),
-		fmtField("  protein_g", updated.ProteinG),
-		fmtField("  carbs_g", updated.CarbsG),
-		fmtField("  fat_g", updated.FatG),
-	}, "\n")}, nil
+	return Result{Text: formatGoals("Goals updated:", updated)}, nil
 }
 
 // mergeGoal applies absent-vs-zero semantics: absent → keep current,
