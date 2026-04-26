@@ -7,6 +7,6 @@ import "github.com/gofiber/fiber/v3"
 // renders deltas into the transcript.
 func pageChat() fiber.Handler {
 	return func(c fiber.Ctx) error {
-		return render(c, "chat.html", pageData{"Chat", "chat"})
+		return render(c, "chat.html", pageData{Title: "Chat", Active: "chat"})
 	}
 }

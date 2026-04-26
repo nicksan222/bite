@@ -24,6 +24,9 @@ func pageDashboard() fiber.Handler {
 		return render(c, "dashboard.html", struct {
 			pageData
 			Cards []dashboardCard
-		}{pageData{"Dashboard", "dashboard"}, dashboardCards})
+		}{
+			pageData: pageData{Title: "Dashboard", Active: "dashboard"},
+			Cards:    dashboardCards,
+		})
 	}
 }

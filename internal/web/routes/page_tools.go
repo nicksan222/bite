@@ -14,6 +14,9 @@ func pageTools(d Deps) fiber.Handler {
 		return render(c, "tools.html", struct {
 			pageData
 			Tools []ToolMeta
-		}{pageData{"Tools", "tools"}, list})
+		}{
+			pageData: pageData{Title: "Tools", Active: "tools"},
+			Tools:    list,
+		})
 	}
 }

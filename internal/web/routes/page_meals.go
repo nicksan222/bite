@@ -7,6 +7,6 @@ import "github.com/gofiber/fiber/v3"
 // (both wired in the template, no per-page JS).
 func pageMeals() fiber.Handler {
 	return func(c fiber.Ctx) error {
-		return render(c, "meals.html", pageData{"Meals", "meals"})
+		return render(c, "meals.html", pageData{Title: "Meals", Active: "meals"})
 	}
 }
