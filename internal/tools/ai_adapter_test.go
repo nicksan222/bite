@@ -134,6 +134,26 @@ func TestRenderForAI_textPlusTable(t *testing.T) {
 	assert.Contains(t, out, "| y |")
 }
 
+func TestAITools_usesStaticDescriptionNotDynamic(t *testing.T) {
+	// The AI tool spec must keep Description short (the static field), not
+	// the dynamic Long() output. Sending the long help text inflates every
+	// chat payload — doctor's description alone would balloon by ~400 chars.
+	withCleanRegistry(t, func() {
+		Register(Tool{
+			Name:        "expanding",
+			Summary:     "s",
+			Description: "short",
+			DescribeDynamic: func() string {
+				return "very-long dynamic description that should not leak to AI"
+			},
+			Run: noopTool("x").Run,
+		})
+		got := AITools(Deps{})
+		require.Len(t, got, 1)
+		assert.Equal(t, "short", got[0].Description)
+	})
+}
+
 func TestAITools_ExecuteSurfacesRunError(t *testing.T) {
 	withCleanRegistry(t, func() {
 		Register(Tool{
