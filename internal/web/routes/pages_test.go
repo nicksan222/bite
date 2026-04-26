@@ -191,6 +191,12 @@ func TestPages_dashboardRendersCards(t *testing.T) {
 		require.Contains(t, got, "/htmx/tool/"+card.Tool,
 			"dashboard must wire each card's hx-get to /htmx/tool/%s", card.Tool)
 	}
+	// Triggers and swap mode are shared by every card; checking once
+	// is enough since {{range}} renders the same template per item.
+	require.Contains(t, got, `hx-trigger="load, every 30s, refresh from:body"`,
+		"cards must auto-load, periodically refresh, and listen for the body-level refresh event")
+	require.Contains(t, got, `hx-swap="innerHTML"`,
+		"cards must replace their inner content on each fetch, not append")
 }
 
 // TestPages_toolsListsRegistry asserts the tools page renders names
