@@ -3,6 +3,7 @@ package routes
 import (
 	"bufio"
 	"bytes"
+	"context"
 	"fmt"
 	"net/http"
 	"strings"
@@ -59,11 +60,13 @@ func chatStart(d Deps) fiber.Handler {
 }
 
 // chatStream handles GET /api/chat/stream/:id — the SSE endpoint
-// htmx-ext-sse opens after a successful POST /api/chat. It pops the
-// stashed turn, calls the model, and streams plain-text events:
+// htmx-ext-sse opens after a successful POST /api/chat. The response is
+// ALWAYS an SSE 200 stream so a failure surfaces as an `event: error`
+// the asst bubble can swap, rather than as a non-200 EventSource that
+// htmx-ext-sse would silently drop into a stuck spinner. Events:
 //
 //	event: delta\ndata: <token>\n\n
-//	event: done\ndata:\n\n
+//	event: done\ndata: \n\n
 //	event: error\ndata: <message>\n\n
 //
 // Plain text (not JSON) keeps htmx-ext-sse's sse-swap a one-liner: the
@@ -72,32 +75,55 @@ func chatStart(d Deps) fiber.Handler {
 // the next turn carries proper context.
 func chatStream(d Deps) fiber.Handler {
 	return func(c fiber.Ctx) error {
-		if d.AI == nil {
-			return jsonError(c, http.StatusServiceUnavailable, "AI not configured (set ANTHROPIC_API_KEY)")
-		}
-		turn, ok := turnStore.pop(c.Params("id"))
-		if !ok {
-			return jsonError(c, http.StatusNotFound, "turn expired or not found")
-		}
-
+		// Capture every per-request value here. SendStreamWriter runs
+		// the callback in a goroutine that outlives the handler return,
+		// so reading from c (params, context, etc.) after this point
+		// races fiber's ctx recycling and panics.
+		turnID := c.Params("id")
 		ctx := c.Context()
-		var opts []ai.StreamOption
-		if d.StreamOpts != nil {
-			opts = d.StreamOpts()
-		}
-		events, err := d.AI.Stream(ctx, turn.history, opts...)
-		if err != nil {
-			return jsonError(c, http.StatusBadGateway, err.Error())
-		}
-
 		setSSEHeaders(c)
 		return c.SendStreamWriter(func(w *bufio.Writer) {
-			final := pumpStreamEvents(w, events)
-			if final != "" {
-				chatSessionStore.appendTurn(turn.sessionID, turn.userMsg, final)
-			}
+			runChatStream(ctx, d, turnID, w)
 		})
 	}
+}
+
+// runChatStream is chatStream's SSE-body driver. Split out so every
+// failure path can write an `event: error\nevent: done` pair through
+// the same writer instead of branching between JSON and SSE responses.
+func runChatStream(ctx context.Context, d Deps, turnID string, w *bufio.Writer) {
+	if d.AI == nil {
+		writeSSEErrorAndDone(w, "AI not configured (set ANTHROPIC_API_KEY)")
+		return
+	}
+	turn, ok := turnStore.pop(turnID)
+	if !ok {
+		writeSSEErrorAndDone(w, "turn expired or not found")
+		return
+	}
+
+	var opts []ai.StreamOption
+	if d.StreamOpts != nil {
+		opts = d.StreamOpts()
+	}
+	events, err := d.AI.Stream(ctx, turn.history, opts...)
+	if err != nil {
+		writeSSEErrorAndDone(w, err.Error())
+		return
+	}
+
+	final := pumpStreamEvents(w, events)
+	if final != "" {
+		chatSessionStore.appendTurn(turn.sessionID, turn.userMsg, final)
+	}
+}
+
+// writeSSEErrorAndDone sends an error event followed by a terminating
+// done event, so the asst bubble's sse-close="done" hook still fires
+// and the EventSource shuts cleanly.
+func writeSSEErrorAndDone(w *bufio.Writer, msg string) {
+	writeSSE(w, "error", msg)
+	writeSSE(w, "done", "")
 }
 
 // setSSEHeaders configures the response for a Server-Sent Events stream.

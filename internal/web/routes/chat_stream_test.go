@@ -139,25 +139,38 @@ func TestChatTurn_idIsSingleUse(t *testing.T) {
 
 	second, err := app.Test(httptest.NewRequest(http.MethodGet, "/api/chat/stream/"+turnID, nil))
 	require.NoError(t, err)
-	require.Equal(t, http.StatusNotFound, second.StatusCode)
+	require.Equal(t, http.StatusOK, second.StatusCode, "stream endpoint always returns 200; the failure rides as an SSE error event")
+	body2, _ := io.ReadAll(second.Body)
+	require.Contains(t, string(body2), "event: error")
+	require.Contains(t, string(body2), "turn expired or not found")
 }
 
-// TestChatTurn_unknownIdIs404 exercises the cold path: a GET for an ID
-// that was never stashed (link forge, restart, etc).
-func TestChatTurn_unknownIdIs404(t *testing.T) {
+// TestChatTurn_unknownIdYieldsSSEError exercises the cold path: a GET
+// for an ID that was never stashed (link forge, restart, etc) lands on
+// a 200 SSE stream that emits exactly one error event so the asst
+// bubble can surface the failure rather than getting stuck.
+func TestChatTurn_unknownIdYieldsSSEError(t *testing.T) {
 	app := newApp(Deps{AI: &stubStreamer{}})
 	resp, err := app.Test(httptest.NewRequest(http.MethodGet, "/api/chat/stream/deadbeef", nil))
 	require.NoError(t, err)
-	require.Equal(t, http.StatusNotFound, resp.StatusCode)
+	require.Equal(t, http.StatusOK, resp.StatusCode)
+	require.Equal(t, "text/event-stream", resp.Header.Get("Content-Type"))
+	body, _ := io.ReadAll(resp.Body)
+	require.Contains(t, string(body), "event: error")
+	require.Contains(t, string(body), "event: done")
 }
 
-// TestChatStream_unconfigured covers the AI-not-configured path on the
-// SSE endpoint specifically (the POST has its own check above).
-func TestChatStream_unconfigured(t *testing.T) {
+// TestChatStream_unconfiguredYieldsSSEError covers the AI-not-configured
+// path: instead of a 503 JSON, the user sees an SSE error event in the
+// asst bubble, plus a clean done.
+func TestChatStream_unconfiguredYieldsSSEError(t *testing.T) {
 	app := newApp(Deps{})
 	resp, err := app.Test(httptest.NewRequest(http.MethodGet, "/api/chat/stream/whatever", nil))
 	require.NoError(t, err)
-	require.Equal(t, http.StatusServiceUnavailable, resp.StatusCode)
+	require.Equal(t, http.StatusOK, resp.StatusCode)
+	body, _ := io.ReadAll(resp.Body)
+	require.Contains(t, string(body), "event: error")
+	require.Contains(t, string(body), "AI not configured")
 }
 
 // TestChatStream_forwardsStreamOpts proves the chat handler still
@@ -186,11 +199,11 @@ func TestChatStream_forwardsStreamOpts(t *testing.T) {
 	require.Equal(t, 2, streamer.gotOptCount, "every option StreamOpts returned must reach Stream")
 }
 
-// TestChatStream_handshakeErrorIs502 covers the rarer branch where
-// Stream() itself errors before a channel is opened — a 502 surfaces to
-// the EventSource, htmx-ext-sse fires htmx:sseError, and the user can
-// retry. The alternative (no response at all) would silently hang.
-func TestChatStream_handshakeErrorIs502(t *testing.T) {
+// TestChatStream_handshakeErrorYieldsSSEError covers the branch where
+// Stream() itself errors before a channel is opened — the failure
+// surfaces as an SSE error event so the user sees what went wrong
+// instead of staring at a stuck spinner.
+func TestChatStream_handshakeErrorYieldsSSEError(t *testing.T) {
 	app := newApp(Deps{AI: &stubStreamer{streamer: errors.New("upstream down")}})
 	resp, err := app.Test(postForm("/api/chat", map[string]string{"message": "hi"}))
 	require.NoError(t, err)
@@ -199,7 +212,10 @@ func TestChatStream_handshakeErrorIs502(t *testing.T) {
 
 	streamResp, err := app.Test(httptest.NewRequest(http.MethodGet, "/api/chat/stream/"+turnID, nil))
 	require.NoError(t, err)
-	require.Equal(t, http.StatusBadGateway, streamResp.StatusCode)
+	require.Equal(t, http.StatusOK, streamResp.StatusCode)
+	streamBody, _ := io.ReadAll(streamResp.Body)
+	require.Contains(t, string(streamBody), "event: error")
+	require.Contains(t, string(streamBody), "upstream down")
 }
 
 // TestChatTurn_sessionAccumulates: the second turn's history must
