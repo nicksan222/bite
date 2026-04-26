@@ -25,15 +25,7 @@ func htmxTool(d Deps) fiber.Handler {
 
 		res, err := d.InvokeTool(c.Context(), name, raw)
 		if err != nil {
-			status := toolErrorStatus(err)
-			msg := err.Error()
-			if status == http.StatusNotFound {
-				// Use the requested name in the alert — InvokeTool
-				// implementations sometimes return NotFoundError without
-				// pre-formatting it.
-				msg = "tool not found: " + name
-			}
-			return htmlError(c, status, msg)
+			return htmlError(c, toolErrorStatus(err), err.Error())
 		}
 		return c.Type("html").SendString(renderResultHTML(res))
 	}
