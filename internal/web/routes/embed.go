@@ -29,6 +29,10 @@ var pageTemplates = mustParsePages()
 // error rather than ship a fallback handler nobody will ever exercise.
 var staticFS = mustSub(assetsFS, "static")
 
+// mustParsePages is parsePages applied to the embedded assets and
+// converted to a panic on failure. Used for the package-level
+// pageTemplates initializer: a parse error is a programmer mistake
+// caught at startup rather than at request time.
 func mustParsePages() map[string]*template.Template {
 	out, err := parsePages(assetsFS)
 	if err != nil {
@@ -66,6 +70,10 @@ func parsePages(src fs.FS) (map[string]*template.Template, error) {
 	return out, nil
 }
 
+// mustSub returns fs.Sub(parent, dir) and panics on failure. Used at
+// package init for prefix-rooting embedded subtrees, where a malformed
+// prefix is a compile-time-detectable bug not worth surfacing as a
+// fallback handler.
 func mustSub(parent fs.FS, dir string) fs.FS {
 	sub, err := fs.Sub(parent, dir)
 	if err != nil {
