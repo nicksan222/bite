@@ -190,6 +190,45 @@ func TestRegisterCobra_depsProviderError(t *testing.T) {
 	})
 }
 
+func TestRegisterCobra_runErrorPropagates(t *testing.T) {
+	withCleanRegistry(t, func() {
+		Register(Tool{
+			Name: "boom", Summary: "s", Description: "d",
+			Run: func(_ context.Context, _ Deps, _ Args) (Result, error) {
+				return Result{}, assert.AnError
+			},
+		})
+		root := &cobra.Command{Use: "test"}
+		RegisterCobra(root, StaticDeps(Deps{}))
+		_, err := runCmd(t, root, "boom")
+		require.Error(t, err)
+	})
+}
+
+func TestRegisterCobra_streamingToolSkipsTextEcho(t *testing.T) {
+	// When a tool writes to deps.StreamWriter (live output), the cobra
+	// adapter must NOT also print Result.Text — that would duplicate the
+	// stream into stdout. Verify the suppression by writing a sentinel
+	// from the streamer and a different sentinel as Result.Text.
+	withCleanRegistry(t, func() {
+		Register(Tool{
+			Name: "streaming", Summary: "s", Description: "d",
+			Run: func(_ context.Context, deps Deps, _ Args) (Result, error) {
+				if deps.StreamWriter != nil {
+					_, _ = deps.StreamWriter.Write([]byte("STREAMED"))
+				}
+				return Result{Text: "TEXT"}, nil
+			},
+		})
+		root := &cobra.Command{Use: "test"}
+		RegisterCobra(root, StaticDeps(Deps{}))
+		out, err := runCmd(t, root, "streaming")
+		require.NoError(t, err)
+		assert.Contains(t, out, "STREAMED")
+		assert.NotContains(t, out, "TEXT", "Result.Text should be suppressed when stream wrote")
+	})
+}
+
 func TestRegisterCobra_cleanupRuns(t *testing.T) {
 	withCleanRegistry(t, func() {
 		Register(noopTool("p"))
