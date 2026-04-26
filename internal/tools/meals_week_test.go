@@ -19,6 +19,14 @@ func TestMealsWeek_empty(t *testing.T) {
 	assert.Contains(t, res.Text, "No meals logged this week")
 }
 
+func TestMealsWeek_storeError(t *testing.T) {
+	ctx := context.Background()
+	deps := freshDeps(t)
+	require.NoError(t, deps.Store.Close())
+	_, err := MustGet("meals_week").Run(ctx, deps, NewArgs(nil))
+	require.Error(t, err)
+}
+
 func TestMealsWeek_groupsByDay(t *testing.T) {
 	ctx := context.Background()
 	deps := freshDeps(t)
