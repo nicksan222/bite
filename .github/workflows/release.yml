@@ -4,12 +4,14 @@ on:
   push:
     tags:
       - 'v*'
+  # Manual runs auto-bump the patch version of the latest v* tag (or
+  # default to v0.1.0 if none exist). Type a value to override.
   workflow_dispatch:
     inputs:
-      snapshot:
-        description: 'Snapshot build (no GitHub release, no GHCR push)'
-        type: boolean
-        default: true
+      version:
+        description: 'Tag (e.g. v0.2.0). Blank = auto-bump patch from latest v* tag.'
+        type: string
+        default: ''
 
 # On first release, the GHCR package is created as private. Make it public
 # in the repo's Packages settings if you want anonymous `docker pull` to work.
@@ -45,6 +47,51 @@ jobs:
           username: ${{ github.actor }}
           password: ${{ secrets.GITHUB_TOKEN }}
 
+      # On a tag push the version is already pinned by GITHUB_REF_NAME and
+      # the existing tag on HEAD; goreleaser picks both up automatically.
+      # On workflow_dispatch we mint and push a tag here so goreleaser has
+      # something to anchor to. The push uses GITHUB_TOKEN which (by
+      # design) cannot retrigger this workflow, so the manual run does the
+      # full release in one job rather than tag-push-then-rerun.
+      - name: Resolve release tag
+        if: github.event_name == 'workflow_dispatch'
+        id: tag
+        shell: bash
+        run: |
+          set -euo pipefail
+          input='${{ inputs.version }}'
+          if [[ -n "$input" ]]; then
+            tag="$input"
+          else
+            latest=$(git tag --sort=-v:refname --list 'v[0-9]*.[0-9]*.[0-9]*' | head -n1)
+            if [[ -z "$latest" ]]; then
+              tag='v0.1.0'
+            else
+              tag=$(echo "$latest" | awk -F. -v OFS=. '{$NF+=1; print}')
+            fi
+          fi
+          if [[ ! "$tag" =~ ^v[0-9]+\.[0-9]+\.[0-9]+$ ]]; then
+            echo "::error::version $tag must match v<major>.<minor>.<patch>"
+            exit 1
+          fi
+          if git rev-parse -q --verify "refs/tags/$tag" >/dev/null; then
+            echo "::error::tag $tag already exists"
+            exit 1
+          fi
+          echo "tag=$tag" >> "$GITHUB_OUTPUT"
+
+      - name: Create and push tag
+        if: github.event_name == 'workflow_dispatch'
+        shell: bash
+        env:
+          TAG: ${{ steps.tag.outputs.tag }}
+        run: |
+          set -euo pipefail
+          git config user.name 'github-actions[bot]'
+          git config user.email 'github-actions[bot]@users.noreply.github.com'
+          git tag -a "$TAG" -m "$TAG"
+          git push origin "$TAG"
+
       - name: Install sqlc
         run: go install github.com/sqlc-dev/sqlc/cmd/sqlc@latest
 
@@ -56,6 +103,6 @@ jobs:
         with:
           distribution: goreleaser
           version: latest
-          args: release --clean ${{ inputs.snapshot && '--snapshot' || '' }}
+          args: release --clean
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
