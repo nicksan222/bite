@@ -121,6 +121,26 @@ func TestDoctor_pingGateRunsCheck(t *testing.T) {
 	}
 }
 
+func TestGateParams_includesEveryDistinctGate(t *testing.T) {
+	// Doctor's Params must include a Bool flag for every distinct gate
+	// declared by registered checks, so adding a gated check extends
+	// `bite doctor`'s flag set automatically.
+	doctor := MustGet("doctor")
+
+	wantGates := map[string]struct{}{}
+	for _, c := range Checks() {
+		if c.Gate != "" {
+			wantGates[c.Gate] = struct{}{}
+		}
+	}
+	gotGates := map[string]struct{}{}
+	for _, p := range doctor.Params {
+		assert.Equal(t, ParamBool, p.Type, "gate flags must be bool")
+		gotGates[p.Name] = struct{}{}
+	}
+	assert.Equal(t, wantGates, gotGates, "doctor params should mirror check gates")
+}
+
 func TestRunCheck_recordsFailure(t *testing.T) {
 	var sb strings.Builder
 	ok := runCheck(context.Background(), &sb, Check{
