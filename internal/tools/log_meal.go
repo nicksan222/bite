@@ -49,10 +49,5 @@ func runLogMeal(ctx context.Context, deps Deps, args Args) (Result, error) {
 	if err != nil {
 		return Result{}, fmt.Errorf("save meal: %w", err)
 	}
-	return Result{
-		Text: fmt.Sprintf(
-			"meal logged (id=%d): %s — %.0f kcal, %.1fg protein, %.1fg carbs, %.1fg fat",
-			meal.ID, meal.Title, meal.Kcal, meal.ProteinG, meal.CarbsG, meal.FatG,
-		),
-	}, nil
+	return Result{Text: formatMealSaved(meal)}, nil
 }

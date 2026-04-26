@@ -21,7 +21,7 @@ func TestLogMeal_savesAndReports(t *testing.T) {
 		"items":     []any{"pasta", "pesto"},
 	}))
 	require.NoError(t, err)
-	assert.Contains(t, res.Text, "meal logged")
+	assert.Contains(t, res.Text, "logged")
 	assert.Contains(t, res.Text, "Pasta")
 	assert.Contains(t, res.Text, "550")
 

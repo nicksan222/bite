@@ -44,6 +44,18 @@ func writeTotalsLine(sb *strings.Builder, label string, t totals) {
 		label, t.Kcal, t.ProteinG, t.CarbsG, t.FatG)
 }
 
+// formatMealSaved is the canonical "logged a meal" confirmation line, shared
+// between log_meal (text-only) and log_meal_from_media (media + text). One
+// formatter keeps the wording, precision, and field order consistent across
+// both surfaces — matters because the chat history shows assistant turns,
+// and the model uses prior confirmations as context for follow-ups.
+func formatMealSaved(m db.Meal) string {
+	return fmt.Sprintf(
+		"logged #%d %s — %.0f kcal, %.1fg protein, %.1fg carbs, %.1fg fat",
+		m.ID, m.Title, m.Kcal, m.ProteinG, m.CarbsG, m.FatG,
+	)
+}
+
 // formatMealList produces a flat bullet list of meals followed by a single
 // totals line. Used by meals_today and meals_on.
 func formatMealList(meals []db.Meal) string {

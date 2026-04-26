@@ -17,7 +17,8 @@ func TestLogMealFromMedia_savesAndReports(t *testing.T) {
 		"text": "200g pasta",
 	}))
 	require.NoError(t, err)
-	assert.Contains(t, res.Text, "logged pasta")
+	assert.Contains(t, res.Text, "logged")
+	assert.Contains(t, res.Text, "pasta")
 	assert.Contains(t, res.Text, "550")
 
 	meals, err := deps.Store.ListRecentMeals(ctx, 10)

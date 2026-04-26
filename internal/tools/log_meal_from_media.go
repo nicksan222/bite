@@ -47,8 +47,5 @@ func runLogMealFromMedia(ctx context.Context, deps Deps, args Args) (Result, err
 	if err != nil {
 		return Result{}, fmt.Errorf("save: %w", err)
 	}
-	return Result{Text: fmt.Sprintf(
-		"logged %s (#%d) — %.0f kcal, P %.0fg, C %.0fg, F %.0fg",
-		meal.Title, meal.ID, meal.Kcal, meal.ProteinG, meal.CarbsG, meal.FatG,
-	)}, nil
+	return Result{Text: formatMealSaved(meal)}, nil
 }
