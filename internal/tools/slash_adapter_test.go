@@ -35,6 +35,13 @@ func TestDispatch_unknownCommand(t *testing.T) {
 	})
 }
 
+func TestHelpText_emptyRegistry(t *testing.T) {
+	withCleanRegistry(t, func() {
+		got := helpText()
+		assert.Contains(t, got, "no slash commands registered")
+	})
+}
+
 func TestDispatch_help(t *testing.T) {
 	withCleanRegistry(t, func() {
 		Register(noopTool("alpha"))
