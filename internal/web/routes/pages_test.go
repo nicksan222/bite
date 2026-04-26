@@ -122,6 +122,24 @@ func TestPages_htmxConfigEnables4xxSwap(t *testing.T) {
 	require.True(t, got4xx, "the [45].. rule must have swap:true so error alerts surface")
 }
 
+// TestPages_dashboardRendersCards proves the dashboard's {{range
+// .Cards}} loop actually fires. Without this, a regression that
+// silently drops the loop (or feeds an empty Cards slice) would still
+// pass TestPages_render — only the page header is asserted there.
+func TestPages_dashboardRendersCards(t *testing.T) {
+	app := newApp(Deps{})
+	resp, err := app.Test(httptest.NewRequest(http.MethodGet, "/dashboard", nil))
+	require.NoError(t, err)
+	body, _ := io.ReadAll(resp.Body)
+	got := string(body)
+	for _, card := range dashboardCards {
+		require.Contains(t, got, card.Title,
+			"dashboard must render every card's title — %q is missing", card.Title)
+		require.Contains(t, got, "/htmx/tool/"+card.Tool,
+			"dashboard must wire each card's hx-get to /htmx/tool/%s", card.Tool)
+	}
+}
+
 // TestPages_toolsListsRegistry asserts the tools page renders names
 // returned by the ListTools closure AND that the closure is consulted
 // per request — both load-bearing for "the dashboard reflects the live
