@@ -105,3 +105,25 @@ func TestRenameConversation_storeError(t *testing.T) {
 	}))
 	require.Error(t, err)
 }
+
+func TestDeleteConversation_storeError(t *testing.T) {
+	ctx := context.Background()
+	deps := freshDeps(t)
+	conv, err := deps.Store.NewConversation(ctx, "m", "")
+	require.NoError(t, err)
+	require.NoError(t, deps.Store.Close())
+
+	_, err = MustGet("delete_conversation").Run(ctx, deps, NewArgs(map[string]any{
+		"conversation_id": float64(conv.ID),
+	}))
+	require.Error(t, err)
+}
+
+func TestConversationsList_storeError(t *testing.T) {
+	ctx := context.Background()
+	deps := freshDeps(t)
+	require.NoError(t, deps.Store.Close())
+
+	_, err := MustGet("conversations_list").Run(ctx, deps, NewArgs(nil))
+	require.Error(t, err)
+}

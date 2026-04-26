@@ -55,3 +55,22 @@ func TestAnalyzeMeal_noAIClient(t *testing.T) {
 	}))
 	require.Error(t, err)
 }
+
+func TestAnalyzeMeal_routesURLsAndPaths(t *testing.T) {
+	// analyzeFromArgs splits the file list into MediaURLs (http/https) vs
+	// MediaPaths (everything else). Verify both branches are reachable.
+	ctx := context.Background()
+	deps := freshDeps(t)
+	deps.AI = stubAI{resp: analysisJSON}
+
+	res, err := MustGet("analyze_meal").Run(ctx, deps, NewArgs(map[string]any{
+		"text": "lunch",
+		"file": []any{
+			"https://example.com/photo.jpg",
+			"http://example.com/photo2.jpg",
+			"/local/photo.jpg",
+		},
+	}))
+	require.NoError(t, err)
+	assert.Contains(t, res.Text, "pasta")
+}
