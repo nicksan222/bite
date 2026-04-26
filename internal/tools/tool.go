@@ -3,12 +3,7 @@ package tools
 import (
 	"context"
 	"fmt"
-	"io"
 	"strings"
-	"time"
-
-	"github.com/nicksan222/bite/internal/ai"
-	"github.com/nicksan222/bite/internal/db"
 )
 
 // ParamType identifies the wire type of a tool parameter.
@@ -33,141 +28,6 @@ type Param struct {
 	Default    any
 }
 
-// Deps is the wiring passed once at startup. Every tool's Run closure receives
-// it; tools never reach for globals.
-type Deps struct {
-	Store        db.Storer
-	AI           ai.Streamer
-	Now          func() time.Time
-	Loc          *time.Location
-	OpenAIAPIKey string
-	// StreamWriter, when non-nil, receives progressive output from tools that
-	// stream (e.g. ask). Cobra wires this to stdout so `bite ask` feels live;
-	// AI/slash adapters leave it nil so the model gets the buffered final
-	// text via Result.Text.
-	StreamWriter io.Writer
-}
-
-// NowOrDefault returns d.Now() if set, otherwise time.Now.
-func (d Deps) NowOrDefault() time.Time {
-	if d.Now != nil {
-		return d.Now()
-	}
-	return time.Now()
-}
-
-// LocOrDefault returns d.Loc if set, otherwise time.Local.
-func (d Deps) LocOrDefault() *time.Location {
-	if d.Loc != nil {
-		return d.Loc
-	}
-	return time.Local
-}
-
-// Args carries normalised parameter values. The same shape is produced by all
-// three surface parsers (AI JSON, cobra flags, slash key=value).
-type Args struct {
-	raw map[string]any
-}
-
-// NewArgs wraps a raw map. Used by adapters and tests.
-func NewArgs(raw map[string]any) Args {
-	if raw == nil {
-		raw = map[string]any{}
-	}
-	return Args{raw: raw}
-}
-
-// Has reports whether name was supplied (distinguishes absent from zero).
-func (a Args) Has(name string) bool {
-	_, ok := a.raw[name]
-	return ok
-}
-
-// String returns the string at name, or "" if absent or wrong type.
-func (a Args) String(name string) string {
-	v, ok := a.raw[name]
-	if !ok {
-		return ""
-	}
-	if s, ok := v.(string); ok {
-		return s
-	}
-	return ""
-}
-
-// Int returns the int64 at name. Accepts int/int64/float64 (JSON numbers
-// arrive as float64). Returns 0 if absent or wrong type.
-func (a Args) Int(name string) int64 {
-	v, ok := a.raw[name]
-	if !ok {
-		return 0
-	}
-	switch n := v.(type) {
-	case int:
-		return int64(n)
-	case int64:
-		return n
-	case float64:
-		return int64(n)
-	case float32:
-		return int64(n)
-	}
-	return 0
-}
-
-// Float returns the float64 at name. Accepts float32/float64/int/int64.
-func (a Args) Float(name string) float64 {
-	v, ok := a.raw[name]
-	if !ok {
-		return 0
-	}
-	switch n := v.(type) {
-	case float64:
-		return n
-	case float32:
-		return float64(n)
-	case int:
-		return float64(n)
-	case int64:
-		return float64(n)
-	}
-	return 0
-}
-
-// Bool returns the bool at name.
-func (a Args) Bool(name string) bool {
-	v, ok := a.raw[name]
-	if !ok {
-		return false
-	}
-	if b, ok := v.(bool); ok {
-		return b
-	}
-	return false
-}
-
-// StringList returns a []string at name. Accepts []string or []any of strings.
-func (a Args) StringList(name string) []string {
-	v, ok := a.raw[name]
-	if !ok {
-		return nil
-	}
-	switch xs := v.(type) {
-	case []string:
-		return xs
-	case []any:
-		out := make([]string, 0, len(xs))
-		for _, x := range xs {
-			if s, ok := x.(string); ok {
-				out = append(out, s)
-			}
-		}
-		return out
-	}
-	return nil
-}
-
 // Result is what a tool returns. Text is required; Table is an optional
 // structured render that adapters lay out per surface (tabwriter for cobra,
 // Markdown table for AI/TUI).
@@ -183,7 +43,10 @@ type Table struct {
 	Footer  []string
 }
 
-// Tool is the single source of truth for a domain action.
+// Tool is the single source of truth for a domain action. Drop a file in
+// internal/tools/<name>.go that calls Register from init() and the AI tool
+// spec, cobra subcommand, slash handler, and system-prompt entry are all
+// wired automatically.
 type Tool struct {
 	Name        string
 	Summary     string
