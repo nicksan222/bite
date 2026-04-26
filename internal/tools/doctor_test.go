@@ -103,6 +103,30 @@ func TestDoctor_allHardChecksPassWithStubEnv(t *testing.T) {
 	assert.Contains(t, res.Text, "audio transcription available")
 }
 
+func TestDoctor_dbCheckFailsWithBadDSN(t *testing.T) {
+	// Pointing BITE_DB at a directory exercises the db.Open error branch
+	// inside the "db: open + migrate" check.
+	t.Setenv("BITE_DB", "/tmp")
+	t.Setenv("BITE_MODEL", "claude-haiku-4-5")
+	t.Setenv("BITE_MAX_TOKENS", "")
+	t.Setenv("ANTHROPIC_API_KEY", "sk-test-fake")
+	t.Setenv("OPENAI_API_KEY", "")
+	t.Setenv("XDG_DATA_HOME", t.TempDir())
+
+	_, err := MustGet("doctor").Run(context.Background(), Deps{}, NewArgs(nil))
+	require.Error(t, err, "doctor must report failure when db can't open")
+}
+
+func TestDoctor_configLoadFailureBubblesIntoChecks(t *testing.T) {
+	// BITE_MAX_TOKENS=invalid makes config.Load() error inside each check
+	// closure, exercising the rarely-hit "load config from check" failure.
+	t.Setenv("BITE_MAX_TOKENS", "not-a-number")
+	t.Setenv("XDG_DATA_HOME", t.TempDir())
+
+	_, err := MustGet("doctor").Run(context.Background(), Deps{}, NewArgs(nil))
+	require.Error(t, err)
+}
+
 func TestDoctor_pingGateRunsCheck(t *testing.T) {
 	// Find the ping-gated check.
 	var gated []string
