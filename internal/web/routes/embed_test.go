@@ -34,6 +34,15 @@ func TestParsePages_skipsLayout(t *testing.T) {
 	require.NotContains(t, got, "layout.html")
 }
 
+// TestParsePages_missingViewsDir covers the read-error branch: an FS
+// that doesn't contain views/ at all surfaces a wrapped error, not a
+// silent empty map.
+func TestParsePages_missingViewsDir(t *testing.T) {
+	_, err := parsePages(fstest.MapFS{})
+	require.Error(t, err)
+	require.Contains(t, err.Error(), "read views/")
+}
+
 // TestParsePages_missingContentBlock locks in the boot-time guard: a
 // page that forgets {{define "content"}} parses fine but is unusable —
 // fail loudly with the offending filename so the developer sees it
