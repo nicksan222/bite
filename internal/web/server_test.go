@@ -46,6 +46,11 @@ func TestNew_errorHandlerEnvelope(t *testing.T) {
 	require.NoError(t, err)
 	require.Equal(t, http.StatusNotFound, resp.StatusCode)
 	require.Contains(t, resp.Header.Get("Content-Type"), "application/json")
+	var env struct {
+		Error string `json:"error"`
+	}
+	require.NoError(t, json.NewDecoder(resp.Body).Decode(&env))
+	require.NotEmpty(t, env.Error, "fiber.Error must carry through to the envelope's error field")
 }
 
 // TestNew_endToEnd is the integration test for web.New: a full request
