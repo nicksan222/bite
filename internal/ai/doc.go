@@ -1,16 +1,9 @@
 // Package ai is bite's AI layer.
 //
-// # Files
-//
-//   - client.go   — Client (streaming chat) and the Streamer interface.
-//   - messages.go — Message, Attachment, and eino schema conversion.
-//   - claude.go   — Claude model factory (bite is Claude-only by design).
-//   - analyze.go  — AnalyzeMeal: any mix of text, images, audio, and video.
-//
-// bite is Claude-only by design. If you ever need a second provider, add a
-// sibling file (e.g. openai.go) — don't build a generic provider system
-// speculatively.
-//
-// The Streamer interface allows callers to inject mocks for testing without
-// a real Anthropic network call.
+// Adding a provider is a one-file change: drop a sibling next to
+// claude.go that calls RegisterProvider in init(). NewClient, doctor
+// checks, and resolution all consume the registry — they never switch
+// on provider name. Each provider's Validate returns a typed
+// *MissingCredentialError so callers get user-actionable messages
+// without knowing the implementation.
 package ai

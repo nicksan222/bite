@@ -41,19 +41,36 @@ var _ model.ToolCallingChatModel = (*mockModel)(nil)
 
 // ─── NewClient ────────────────────────────────────────────────────────────────
 
-func TestNewClientValidates(t *testing.T) {
+func TestNewClient_missingCredential(t *testing.T) {
 	ctx := context.Background()
-	_, err := NewClient(ctx, ClientConfig{Model: "m"})
-	assert.Error(t, err, "missing API key should error")
+	_, err := NewClient(ctx, ClientConfig{Provider: ProviderAnthropic, Model: "m"})
+	require.Error(t, err)
+	var miss *MissingCredentialError
+	require.ErrorAs(t, err, &miss)
+	assert.Equal(t, "ANTHROPIC_API_KEY", miss.EnvVar)
+}
 
-	_, err = NewClient(ctx, ClientConfig{APIKey: "k"})
-	assert.Error(t, err, "missing model should error")
+func TestNewClient_unknownProvider(t *testing.T) {
+	_, err := NewClient(context.Background(), ClientConfig{Provider: Provider("nope"), APIKey: "k", Model: "m"})
+	require.Error(t, err)
+	assert.ErrorContains(t, err, `unknown provider "nope"`)
 }
 
 func TestNewClient_success(t *testing.T) {
 	c, err := NewClient(context.Background(), ClientConfig{
-		APIKey: "sk-ant-test-fake",
-		Model:  "claude-haiku-4-5",
+		Provider: ProviderAnthropic,
+		APIKey:   "sk-ant-test-fake",
+		Model:    "claude-haiku-4-5",
+	})
+	require.NoError(t, err)
+	assert.NotNil(t, c)
+}
+
+func TestNewClient_modelDefaultsFromSpec(t *testing.T) {
+	c, err := NewClient(context.Background(), ClientConfig{
+		Provider: ProviderAnthropic,
+		APIKey:   "sk-ant-test-fake",
+		// Model omitted — should fall through to spec.DefaultModel.
 	})
 	require.NoError(t, err)
 	assert.NotNil(t, c)

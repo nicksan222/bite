@@ -25,7 +25,8 @@ type MealAnalysis struct {
 
 // AnalyzeInput is everything the user can throw at AnalyzeMeal — any mix of
 // text, images, audio, and video. Audio is transcribed (Whisper); video is
-// keyframe-extracted (ffmpeg). Both fold into the final Claude vision call.
+// keyframe-extracted (ffmpeg). Both fold into the final vision request to
+// the configured provider.
 type AnalyzeInput struct {
 	// Text is free-form context ("had this for lunch around 1pm"). Optional.
 	Text string
@@ -70,9 +71,10 @@ confidence is "low" | "medium" | "high".
 If multiple images are provided, treat them as different angles of the SAME meal.
 Numbers are integers or one decimal place. Round generously.`
 
-// AnalyzeMeal accepts any combination of media + text and returns a structured
-// nutrition estimate. It transcribes audio and extracts video keyframes
-// before sending one consolidated request to Claude.
+// AnalyzeMeal accepts any combination of media + text and returns a
+// structured nutrition estimate. It transcribes audio and extracts video
+// keyframes before sending one consolidated request via the supplied
+// Streamer (provider-agnostic).
 func AnalyzeMeal(ctx context.Context, c Streamer, in AnalyzeInput) (*MealAnalysis, error) {
 	if len(in.MediaPaths) == 0 && len(in.MediaURLs) == 0 && in.Text == "" {
 		return nil, fmt.Errorf("analyze: nothing to analyze (pass media or text)")

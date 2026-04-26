@@ -9,9 +9,21 @@ import (
 	"github.com/cloudwego/eino/schema"
 )
 
-// ClientConfig configures a streaming AI client.
+type Provider string
+
+const (
+	ProviderAnthropic Provider = "anthropic"
+	ProviderOpenAI    Provider = "openai"
+	ProviderGemini    Provider = "gemini"
+	ProviderOllama    Provider = "ollama"
+)
+
+// ClientConfig is forwarded to the resolved ProviderSpec. Empty Provider
+// triggers ai.Resolve.
 type ClientConfig struct {
+	Provider     Provider
 	APIKey       string
+	BaseURL      string
 	Model        string
 	MaxTokens    int
 	SystemPrompt string
@@ -33,13 +45,26 @@ type Client struct {
 }
 
 func NewClient(ctx context.Context, cfg ClientConfig) (*Client, error) {
-	if cfg.APIKey == "" {
-		return nil, errors.New("ai: missing API key")
+	spec, err := Resolve(cfg.Provider)
+	if err != nil {
+		return nil, err
 	}
-	if cfg.Model == "" {
-		return nil, errors.New("ai: missing model id")
+	pcfg := ProviderConfig{
+		APIKey:    cfg.APIKey,
+		BaseURL:   cfg.BaseURL,
+		Model:     cfg.Model,
+		MaxTokens: cfg.MaxTokens,
 	}
-	m, err := newClaudeModel(ctx, cfg.APIKey, cfg.Model, cfg.MaxTokens)
+	if pcfg.Model == "" {
+		pcfg.Model = spec.DefaultModel
+	}
+	if pcfg.BaseURL == "" {
+		pcfg.BaseURL = spec.DefaultBaseURL
+	}
+	if err := spec.Validate(pcfg); err != nil {
+		return nil, err
+	}
+	m, err := spec.Build(ctx, pcfg)
 	if err != nil {
 		return nil, err
 	}
