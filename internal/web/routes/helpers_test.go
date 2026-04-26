@@ -33,6 +33,24 @@ func TestNotFoundError_message(t *testing.T) {
 	require.Contains(t, err.Error(), "missing_tool")
 }
 
+// TestToolErrorStatus_mapping locks in the contract every tool surface
+// (JSON and HTMX) shares: NotFoundError → 404, anything else → 400.
+// Wrapped NotFoundError must still resolve to 404 — proves the helper
+// uses errors.As (unwrap-aware), not a direct type assertion.
+func TestToolErrorStatus_mapping(t *testing.T) {
+	require.Equal(t, http.StatusNotFound, toolErrorStatus(NotFoundError{Name: "foo"}))
+	require.Equal(t, http.StatusBadRequest, toolErrorStatus(errors.New("kcal must be positive")))
+	require.Equal(t, http.StatusNotFound,
+		toolErrorStatus(wrappedTestErr{NotFoundError{Name: "x"}}))
+}
+
+// wrappedTestErr is a one-line Unwrap wrapper used only by the
+// toolErrorStatus test.
+type wrappedTestErr struct{ inner error }
+
+func (w wrappedTestErr) Error() string { return "wrapped: " + w.inner.Error() }
+func (w wrappedTestErr) Unwrap() error { return w.inner }
+
 // TestRender_unknownTemplateReturnsFiberError documents the
 // programmer-error path: render() called with a name that doesn't exist
 // in pageTemplates returns a 500 fiber.Error rather than panicking.
