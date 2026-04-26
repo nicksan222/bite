@@ -4,6 +4,7 @@ import (
 	"context"
 	"encoding/json"
 	"errors"
+	"io"
 	"net/http"
 	"net/http/httptest"
 	"strings"
@@ -134,6 +135,22 @@ func requireJSONError(t *testing.T, resp *http.Response, status int, wantSubstr 
 	require.NoError(t, json.NewDecoder(resp.Body).Decode(&env))
 	require.Contains(t, env.Error, wantSubstr,
 		"error envelope must carry an actionable message — %q is missing %q", env.Error, wantSubstr)
+}
+
+// requireHTMLAlert asserts the htmlError envelope every HTMX surface
+// returns: the right status, text/html content type, the daisyUI
+// alert-error class, and a body that contains wantSubstr. Mirror of
+// requireJSONError for the HTMX side.
+func requireHTMLAlert(t *testing.T, resp *http.Response, status int, wantSubstr string) {
+	t.Helper()
+	require.Equal(t, status, resp.StatusCode)
+	require.Contains(t, resp.Header.Get("Content-Type"), "text/html")
+	body, _ := io.ReadAll(resp.Body)
+	got := string(body)
+	require.Contains(t, got, `alert alert-error`,
+		"htmlError responses must wear the daisyUI alert-error class")
+	require.Contains(t, got, wantSubstr,
+		"alert body must carry an actionable message — %q is missing %q", got, wantSubstr)
 }
 
 // TestAPI_unconfiguredDeps locks in the contract that every surface

@@ -66,24 +66,14 @@ func TestChatStart_emptyMessage(t *testing.T) {
 	app := newApp(Deps{AI: &stubStreamer{}})
 	resp, err := app.Test(postForm("/api/chat", map[string]string{"message": "   "}))
 	require.NoError(t, err)
-	require.Equal(t, http.StatusBadRequest, resp.StatusCode)
-	require.Contains(t, resp.Header.Get("Content-Type"), "text/html",
-		"validation errors must render as HTML alerts so the form's hx-target shows them")
-	body, _ := io.ReadAll(resp.Body)
-	require.Contains(t, string(body), "empty message")
-	require.Contains(t, string(body), `alert alert-error`)
+	requireHTMLAlert(t, resp, http.StatusBadRequest, "empty message")
 }
 
 func TestChatStart_unconfigured(t *testing.T) {
 	app := newApp(Deps{})
 	resp, err := app.Test(postForm("/api/chat", map[string]string{"message": "hi"}))
 	require.NoError(t, err)
-	require.Equal(t, http.StatusServiceUnavailable, resp.StatusCode)
-	require.Contains(t, resp.Header.Get("Content-Type"), "text/html",
-		"unconfigured AI must surface as an HTML alert (the form's hx-target is the transcript)")
-	body, _ := io.ReadAll(resp.Body)
-	require.Contains(t, string(body), "AI not configured")
-	require.Contains(t, string(body), `alert alert-error`)
+	requireHTMLAlert(t, resp, http.StatusServiceUnavailable, "AI not configured")
 }
 
 // TestChatStart_returnsBubblesWithSSEConnect proves the POST handler

@@ -73,11 +73,7 @@ func TestHTMX_tool_runErrorReturnsHTMLAlert(t *testing.T) {
 	})
 	resp, err := app.Test(httptest.NewRequest(http.MethodPost, "/htmx/tool/log_meal", nil))
 	require.NoError(t, err)
-	require.Equal(t, http.StatusBadRequest, resp.StatusCode)
-	require.Contains(t, resp.Header.Get("Content-Type"), "text/html")
-	body, _ := io.ReadAll(resp.Body)
-	require.Contains(t, string(body), `alert alert-error`)
-	require.Contains(t, string(body), `kcal must be positive`)
+	requireHTMLAlert(t, resp, http.StatusBadRequest, "kcal must be positive")
 }
 
 // TestHTMX_unconfiguredDepsReturnsHTML pins that an HTMX endpoint never
@@ -88,11 +84,7 @@ func TestHTMX_unconfiguredDepsReturnsHTML(t *testing.T) {
 	app := newApp(Deps{})
 	resp, err := app.Test(httptest.NewRequest(http.MethodGet, "/htmx/tool/x", nil))
 	require.NoError(t, err)
-	require.Equal(t, http.StatusServiceUnavailable, resp.StatusCode)
-	require.Contains(t, resp.Header.Get("Content-Type"), "text/html")
-	body, _ := io.ReadAll(resp.Body)
-	require.Contains(t, string(body), `alert alert-error`)
-	require.Contains(t, string(body), "tool invocation not configured")
+	requireHTMLAlert(t, resp, http.StatusServiceUnavailable, "tool invocation not configured")
 }
 
 func TestHTMX_tool_endpoint(t *testing.T) {
@@ -119,12 +111,7 @@ func TestHTMX_tool_notFound(t *testing.T) {
 	})
 	resp, err := app.Test(httptest.NewRequest(http.MethodGet, "/htmx/tool/nope", nil))
 	require.NoError(t, err)
-	require.Equal(t, http.StatusNotFound, resp.StatusCode)
-	require.Contains(t, resp.Header.Get("Content-Type"), "text/html")
-	body, _ := io.ReadAll(resp.Body)
-	require.Contains(t, string(body), `alert alert-error`)
-	require.Contains(t, string(body), "tool not found: nope",
-		"404 alert must echo the requested tool name so the user knows what failed")
+	requireHTMLAlert(t, resp, http.StatusNotFound, "tool not found: nope")
 }
 
 // TestHTMX_postForm locks in that POSTed form data flows through
