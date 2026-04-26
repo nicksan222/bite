@@ -9,10 +9,15 @@ import (
 	"github.com/nicksan222/bite/internal/ai"
 )
 
-// chatStreamPathPrefix is the URL prefix the asst bubble's sse-connect
-// resolves under. Centralised so register.go (route mount), chat_turn.go
-// (template URL), and the tests all reach for the same string.
-const chatStreamPathPrefix = "/api/chat/stream/"
+// chatStreamPath is the chat-stream route relative to the /api group,
+// and chatStreamPathPrefix is its full URL prefix. Splitting the two
+// lets register.go mount under api.Get(chatStreamPath+...) while the
+// template (which the browser dereferences absolutely) and the tests
+// reach for chatStreamPathPrefix.
+const (
+	chatStreamPath       = "/chat/stream/"
+	chatStreamPathPrefix = "/api" + chatStreamPath
+)
 
 // turnTTL bounds how long a stashed turn can sit waiting for the SSE
 // stream endpoint to pick it up. The page POSTs the form and the browser

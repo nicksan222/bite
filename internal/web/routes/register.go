@@ -16,7 +16,7 @@ func Register(app *fiber.App, d Deps) {
 	// HTML scaffold; htmx-ext-sse then opens the GET to stream tokens
 	// into the assistant bubble.
 	api.Post("/chat", chatStart(d))
-	app.Get(chatStreamPathPrefix+":id", chatStream(d))
+	api.Get(chatStreamPath+":id", chatStream(d))
 
 	htmx := app.Group("/htmx")
 	// One handler for GET (dashboard refresh, hx-get) and POST (form
