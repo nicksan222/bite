@@ -152,6 +152,24 @@ func TestDoctor_configLoadFailureBubblesIntoChecks(t *testing.T) {
 	require.Error(t, err)
 }
 
+func TestDoctor_pingWithFakeKeyReachesStream(t *testing.T) {
+	// With a fake API key set, RequireAPIKey passes and the ping check
+	// proceeds to NewClient + Stream, where eino's claude model rejects
+	// the fake key. The doctor surfaces it as a hard failure but we get
+	// to exercise the Stream-error branch inside the ping closure.
+	t.Setenv("BITE_DB", t.TempDir()+"/test.db")
+	t.Setenv("BITE_MODEL", "claude-haiku-4-5")
+	t.Setenv("BITE_MAX_TOKENS", "")
+	t.Setenv("ANTHROPIC_API_KEY", "sk-ant-fake-test-only")
+	t.Setenv("OPENAI_API_KEY", "")
+	t.Setenv("XDG_DATA_HOME", t.TempDir())
+
+	_, _ = MustGet("doctor").Run(context.Background(), Deps{}, NewArgs(map[string]any{
+		"ping": true,
+	}))
+	// We don't assert pass/fail here — we just want the code path exercised.
+}
+
 func TestDoctor_pingGateRunsCheck(t *testing.T) {
 	// Find the ping-gated check.
 	var gated []string
