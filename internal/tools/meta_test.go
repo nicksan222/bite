@@ -2,6 +2,7 @@ package tools
 
 import (
 	"context"
+	"strings"
 	"testing"
 
 	"github.com/spf13/cobra"
@@ -54,6 +55,22 @@ func TestMeta_everyToolReachesEverySurface(t *testing.T) {
 
 			assert.Contains(t, appendix, tool.Name, "tool %q missing from system-prompt appendix", tool.Name)
 		})
+	}
+}
+
+// TestMeta_examplesAreWellFormed iterates every registered tool's Examples
+// (if any) and asserts the shape: Cmd starts with "bite " and is non-empty,
+// Desc is non-empty. Stops a future tool from registering an example like
+// `Cmd: "log_meal …", Desc: ""` that would render mis-aligned in --help.
+func TestMeta_examplesAreWellFormed(t *testing.T) {
+	for _, tool := range All() {
+		for _, ex := range tool.Examples {
+			t.Run(tool.Name+":"+ex.Cmd, func(t *testing.T) {
+				assert.True(t, strings.HasPrefix(ex.Cmd, "bite "),
+					"example Cmd %q must start with 'bite '", ex.Cmd)
+				assert.NotEmpty(t, ex.Desc, "example Desc must be non-empty")
+			})
+		}
 	}
 }
 
