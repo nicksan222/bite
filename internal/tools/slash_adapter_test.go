@@ -160,6 +160,30 @@ func TestNewSlashHandler_surfacesRunError(t *testing.T) {
 	})
 }
 
+func TestDispatch_positionalTypeMismatch(t *testing.T) {
+	withCleanRegistry(t, func() {
+		Register(Tool{
+			Name: "n", Summary: "s", Description: "d",
+			Params: []Param{{Name: "x", Type: ParamInt, Required: true, Positional: true}},
+			Run:    noopTool("x").Run,
+		})
+		out := Dispatch(context.Background(), Deps{}, "/n abc")
+		require.Error(t, out.ParseError, "non-int positional must surface as ParseError")
+	})
+}
+
+func TestDispatch_keyedTypeMismatch(t *testing.T) {
+	withCleanRegistry(t, func() {
+		Register(Tool{
+			Name: "n", Summary: "s", Description: "d",
+			Params: []Param{{Name: "x", Type: ParamInt}},
+			Run:    noopTool("x").Run,
+		})
+		out := Dispatch(context.Background(), Deps{}, "/n x=abc")
+		require.Error(t, out.ParseError, "non-int keyed value must surface as ParseError")
+	})
+}
+
 func TestDispatch_runError(t *testing.T) {
 	withCleanRegistry(t, func() {
 		Register(Tool{
