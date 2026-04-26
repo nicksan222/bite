@@ -74,10 +74,9 @@ func (s *turnStoreT) pruneLocked() {
 // chatTurnTmpl is the HTML fragment hx-swapped into the transcript when
 // the user submits a turn. The user bubble is fully formed; the
 // assistant bubble has sse-connect bound, and htmx-ext-sse appends each
-// "delta" event into .chat-bubble. The "done" event closes the
-// connection. data-final-text="" is present so the post-stream JS hook
-// can copy the bubble's textContent into a stable place if needed
-// (currently unused — server-side history removes the need).
+// "delta" event into .chat-bubble. The "done" event closes the SSE
+// connection. The session cookie carries history forward, so neither
+// bubble needs hidden inputs.
 var chatTurnTmpl = template.Must(template.New("chat-turn").Parse(
 	`<div class="chat chat-end" data-role="user">
 	<div class="chat-bubble chat-bubble-primary">{{.UserText}}</div>
