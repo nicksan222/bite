@@ -122,6 +122,25 @@ func TestPages_htmxConfigEnables4xxSwap(t *testing.T) {
 	require.True(t, got4xx, "the [45].. rule must have swap:true so error alerts surface")
 }
 
+// TestPages_mealsFormWiring locks in the load-bearing attributes on
+// the meals page log-form: it must hx-post to /htmx/tool/log_meal,
+// reset on success, and dispatch a body-level "refresh" event so the
+// "Today" card updates immediately. A regression in any of these
+// breaks the meals UX without a visible error.
+func TestPages_mealsFormWiring(t *testing.T) {
+	app := newApp(Deps{})
+	resp, err := app.Test(httptest.NewRequest(http.MethodGet, "/meals", nil))
+	require.NoError(t, err)
+	body, _ := io.ReadAll(resp.Body)
+	got := string(body)
+	require.Contains(t, got, `hx-post="/htmx/tool/log_meal"`,
+		"meals form must post to the log_meal tool")
+	require.Contains(t, got, `dispatchEvent(new Event('refresh'))`,
+		"meals form must dispatch refresh after success so the Today card updates")
+	require.Contains(t, got, `refresh from:body`,
+		"the Today card must subscribe to the body-level refresh event")
+}
+
 // TestPages_dashboardRendersCards proves the dashboard's {{range
 // .Cards}} loop actually fires. Without this, a regression that
 // silently drops the loop (or feeds an empty Cards slice) would still
