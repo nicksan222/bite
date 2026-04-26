@@ -13,6 +13,22 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
+// TestNew_recoverConvertsPanicTo500 proves the recover middleware in
+// New is wired: a handler panic does not crash the server and the
+// ErrorHandler closure converts the recovered error into the standard
+// 500 JSON envelope.
+func TestNew_recoverConvertsPanicTo500(t *testing.T) {
+	srv := New(Deps{
+		ListTools: func() []ToolMeta {
+			panic("boom from ListTools")
+		},
+	})
+	resp, err := srv.App().Test(httptest.NewRequest(http.MethodGet, "/api/tools", nil))
+	require.NoError(t, err)
+	require.Equal(t, http.StatusInternalServerError, resp.StatusCode)
+	require.Contains(t, resp.Header.Get("Content-Type"), "application/json")
+}
+
 // TestNew_errorHandlerEnvelope locks in the JSON-error contract for any
 // failure that flows through the ErrorHandler closure: a fiber.Error
 // (here, the framework-default 404) maps to its Code, not 500, and the
