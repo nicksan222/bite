@@ -2,6 +2,7 @@ package web
 
 import (
 	"context"
+	"encoding/json"
 	"errors"
 	"net"
 	"net/http"
@@ -16,7 +17,8 @@ import (
 // TestNew_recoverConvertsPanicTo500 proves the recover middleware in
 // New is wired: a handler panic does not crash the server and the
 // ErrorHandler closure converts the recovered error into the standard
-// 500 JSON envelope.
+// 500 JSON envelope (so a panic doesn't degrade to a half-written
+// response or a different content-type).
 func TestNew_recoverConvertsPanicTo500(t *testing.T) {
 	srv := New(Deps{
 		ListTools: func() []ToolMeta {
@@ -27,6 +29,11 @@ func TestNew_recoverConvertsPanicTo500(t *testing.T) {
 	require.NoError(t, err)
 	require.Equal(t, http.StatusInternalServerError, resp.StatusCode)
 	require.Contains(t, resp.Header.Get("Content-Type"), "application/json")
+	var env struct {
+		Error string `json:"error"`
+	}
+	require.NoError(t, json.NewDecoder(resp.Body).Decode(&env))
+	require.NotEmpty(t, env.Error, "the recovered panic must surface as a non-empty error message")
 }
 
 // TestNew_errorHandlerEnvelope locks in the JSON-error contract for any
