@@ -20,6 +20,10 @@ type chatRequest struct {
 	History []chatMsgDTO `json:"history,omitempty"`
 }
 
+// chatMsgDTO is one prior turn in chatRequest.History. Role is
+// validated against the user/assistant allowlist by parseChatRole; an
+// untyped string here keeps the JSON decode lax and lets us produce a
+// helpful error message instead of an opaque "cannot unmarshal" failure.
 type chatMsgDTO struct {
 	Role    string `json:"role"`
 	Content string `json:"content"`
