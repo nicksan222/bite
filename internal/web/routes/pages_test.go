@@ -171,6 +171,8 @@ func TestPages_mealsFormWiring(t *testing.T) {
 		"reset and refresh-dispatch must run only on success — a failed log should leave the typed values intact")
 	require.Contains(t, got, `dispatchEvent(new Event('refresh'))`,
 		"meals form must dispatch refresh after success so the Today card updates")
+	require.Contains(t, got, `hx-get="/htmx/tool/meals_today"`,
+		"Today card must fetch from the meals_today tool")
 	require.Contains(t, got, `refresh from:body`,
 		"the Today card must subscribe to the body-level refresh event")
 }
