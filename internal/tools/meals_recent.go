@@ -40,23 +40,17 @@ func runMealsRecent(ctx context.Context, deps Deps, args Args) (Result, error) {
 	tbl := &Table{Headers: []string{"ID", "TIME", "TITLE", "KCAL", "P", "C", "F"}}
 	var tot totals
 	for _, m := range meals {
-		tbl.Rows = append(tbl.Rows, []string{
+		row := append([]string{
 			fmt.Sprintf("%d", m.ID),
 			m.EatenAt.In(loc).Format("2006-01-02 15:04"),
 			m.Title,
-			fmt.Sprintf("%.0f", m.Kcal),
-			fmt.Sprintf("%.0f", m.ProteinG),
-			fmt.Sprintf("%.0f", m.CarbsG),
-			fmt.Sprintf("%.0f", m.FatG),
-		})
+		}, macroCells(m.Kcal, m.ProteinG, m.CarbsG, m.FatG)...)
+		tbl.Rows = append(tbl.Rows, row)
 		tot.add(m)
 	}
-	tbl.Footer = []string{
-		"", "", "total",
-		fmt.Sprintf("%.0f", tot.Kcal),
-		fmt.Sprintf("%.0f", tot.ProteinG),
-		fmt.Sprintf("%.0f", tot.CarbsG),
-		fmt.Sprintf("%.0f", tot.FatG),
-	}
+	tbl.Footer = append(
+		[]string{"", "", "total"},
+		macroCells(tot.Kcal, tot.ProteinG, tot.CarbsG, tot.FatG)...,
+	)
 	return Result{Table: tbl}, nil
 }

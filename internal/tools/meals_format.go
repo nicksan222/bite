@@ -46,6 +46,19 @@ func formatMacrosFull(kcal, protein, carbs, fat float64) string {
 		kcal, protein, carbs, fat)
 }
 
+// macroCells renders the four macro columns for a tabular meal listing as
+// integer-rounded strings. Used by meals_recent for both row data and the
+// totals footer; centralised so the column precision/formatting stays
+// consistent across every cell of the same table.
+func macroCells(kcal, protein, carbs, fat float64) []string {
+	return []string{
+		fmt.Sprintf("%.0f", kcal),
+		fmt.Sprintf("%.0f", protein),
+		fmt.Sprintf("%.0f", carbs),
+		fmt.Sprintf("%.0f", fat),
+	}
+}
+
 // writeTotalsLine writes "Total: K kcal, Pg protein, Cg carbs, Fg fat" with
 // the supplied label (e.g. "Total" or "  Day total").
 func writeTotalsLine(sb *strings.Builder, label string, t totals) {
