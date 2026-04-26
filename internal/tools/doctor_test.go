@@ -1,0 +1,136 @@
+package tools
+
+import (
+	"context"
+	"errors"
+	"maps"
+	"sort"
+	"strings"
+	"testing"
+
+	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
+)
+
+func TestChecks_returnsRegistered(t *testing.T) {
+	got := Checks()
+	assert.NotEmpty(t, got, "expected built-in checks to be registered")
+
+	// Hard severity must come first.
+	for i := 1; i < len(got); i++ {
+		assert.LessOrEqual(t, int(got[i-1].Severity), int(got[i].Severity),
+			"checks must be sorted with Hard before Soft")
+	}
+}
+
+func TestRegisterCheck_panicsOnInvalid(t *testing.T) {
+	assert.Panics(t, func() { RegisterCheck(Check{Name: ""}) })
+	assert.Panics(t, func() { RegisterCheck(Check{Name: "x", Run: nil}) })
+}
+
+func TestRegisterCheck_panicsOnDuplicate(t *testing.T) {
+	checkMu.Lock()
+	saved := append([]Check(nil), checks...)
+	savedOrder := maps.Clone(checkOrder)
+	savedSerial := checkSerial
+	checkMu.Unlock()
+	t.Cleanup(func() {
+		checkMu.Lock()
+		checks = saved
+		checkOrder = savedOrder
+		checkSerial = savedSerial
+		checkMu.Unlock()
+	})
+
+	assert.Panics(t, func() {
+		RegisterCheck(Check{Name: "config: load", Run: func(_ context.Context) (string, error) { return "", nil }})
+	})
+}
+
+func TestDoctorDescription_listsEveryCheck(t *testing.T) {
+	desc := doctorDescription()
+	for _, c := range Checks() {
+		assert.Contains(t, desc, c.Name, "description should mention %q", c.Name)
+	}
+}
+
+func TestDoctorDescription_marksGated(t *testing.T) {
+	desc := doctorDescription()
+	for _, c := range Checks() {
+		if c.Gate != "" {
+			assert.Contains(t, desc, "--"+c.Gate, "gated check %q should mention --%s", c.Name, c.Gate)
+		}
+	}
+}
+
+func TestDoctor_runsAllUnskippedChecks(t *testing.T) {
+	res, err := MustGet("doctor").Run(context.Background(), Deps{}, NewArgs(map[string]any{
+		"ping": false,
+	}))
+	// We don't care about pass/fail in this test; we care that every non-gated
+	// check ran. Each check writes its name to the result text.
+	_ = err
+	for _, c := range Checks() {
+		if c.Gate != "" {
+			assert.NotContains(t, res.Text, "  ✓ "+c.Name, "gated check %q should NOT run", c.Name)
+			continue
+		}
+		assert.Contains(t, res.Text, c.Name, "check %q should appear in output", c.Name)
+	}
+}
+
+func TestDoctor_pingGateRunsCheck(t *testing.T) {
+	// Find the ping-gated check.
+	var gated []string
+	for _, c := range Checks() {
+		if c.Gate == "ping" {
+			gated = append(gated, c.Name)
+		}
+	}
+	require.NotEmpty(t, gated, "expected at least one ping-gated check")
+
+	res, _ := MustGet("doctor").Run(context.Background(), Deps{}, NewArgs(map[string]any{
+		"ping": true,
+	}))
+	for _, name := range gated {
+		assert.Contains(t, res.Text, name, "ping=true should run gated check %q", name)
+	}
+}
+
+func TestRunCheck_recordsFailure(t *testing.T) {
+	var sb strings.Builder
+	ok := runCheck(context.Background(), &sb, Check{
+		Name: "fails",
+		Run:  func(_ context.Context) (string, error) { return "", errors.New("boom") },
+	}, "✗")
+	assert.False(t, ok)
+	assert.Contains(t, sb.String(), "fails")
+	assert.Contains(t, sb.String(), "boom")
+}
+
+func TestRunCheck_recordsSuccess(t *testing.T) {
+	var sb strings.Builder
+	ok := runCheck(context.Background(), &sb, Check{
+		Name: "passes",
+		Run:  func(_ context.Context) (string, error) { return "all good", nil },
+	}, "✗")
+	assert.True(t, ok)
+	assert.Contains(t, sb.String(), "passes")
+	assert.Contains(t, sb.String(), "all good")
+}
+
+func TestChecks_orderStable(t *testing.T) {
+	a := Checks()
+	b := Checks()
+	require.Equal(t, len(a), len(b))
+	namesA := make([]string, len(a))
+	namesB := make([]string, len(b))
+	for i := range a {
+		namesA[i] = a[i].Name
+		namesB[i] = b[i].Name
+	}
+	assert.Equal(t, namesA, namesB)
+	assert.True(t, sort.SliceIsSorted(a, func(i, j int) bool {
+		return a[i].Severity < a[j].Severity || (a[i].Severity == a[j].Severity && checkOrder[a[i].Name] < checkOrder[a[j].Name])
+	}))
+}
