@@ -29,6 +29,14 @@ func TestStreak_one(t *testing.T) {
 	assert.Contains(t, res.Text, "1 day")
 }
 
+func TestStreak_storeError(t *testing.T) {
+	ctx := context.Background()
+	deps := freshDeps(t)
+	require.NoError(t, deps.Store.Close()) // forces Streak() to error
+	_, err := MustGet("streak").Run(ctx, deps, NewArgs(nil))
+	require.Error(t, err)
+}
+
 func TestStreak_many(t *testing.T) {
 	ctx := context.Background()
 	deps := freshDeps(t)

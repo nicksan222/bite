@@ -19,6 +19,14 @@ func TestGetGoals_unset(t *testing.T) {
 	assert.Contains(t, res.Text, "not set")
 }
 
+func TestGetGoals_storeError(t *testing.T) {
+	ctx := context.Background()
+	deps := freshDeps(t)
+	require.NoError(t, deps.Store.Close())
+	_, err := MustGet("get_goals").Run(ctx, deps, NewArgs(nil))
+	require.Error(t, err)
+}
+
 func TestGetGoals_setValues(t *testing.T) {
 	ctx := context.Background()
 	deps := freshDeps(t)
