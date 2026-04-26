@@ -179,6 +179,21 @@ func TestArgs_NewArgsForTool_doesNotOverrideSupplied(t *testing.T) {
 	assert.Equal(t, int64(7), a.Int("limit"), "supplied value must beat Default")
 }
 
+func TestArgs_NewArgsForTool_handlesNilRaw(t *testing.T) {
+	// Adapters that have nothing to pass (e.g. an AI tool call with no
+	// arguments JSON) hand us nil — the helper must allocate a fresh map and
+	// still apply Defaults.
+	tt := Tool{
+		Name: "x", Summary: "s", Description: "d",
+		Params: []Param{
+			{Name: "limit", Type: ParamInt, Default: int64(99), Desc: "d"},
+		},
+		Run: func(_ context.Context, _ Deps, _ Args) (Result, error) { return Result{}, nil },
+	}
+	a := NewArgsForTool(tt, nil)
+	assert.Equal(t, int64(99), a.Int("limit"))
+}
+
 func TestArgs_StringList_acceptsNativeSlice(t *testing.T) {
 	// AI/JSON inputs arrive as []any, but cobra's StringArray flags hand us
 	// a real []string. Both must round-trip identically.

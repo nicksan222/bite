@@ -81,6 +81,10 @@ func describeCheck(b *strings.Builder, c Check) {
 	fmt.Fprintf(b, "  • %s — %s%s\n", c.Name, c.Desc, suffix)
 }
 
+// runDoctor walks the Check registry twice: hard checks first (any failure
+// flips the exit status), then soft checks (warnings only). Gated checks run
+// only when their Bool flag is set on args. Output is plain text so it
+// renders identically in cobra, slash, and AI surfaces.
 func runDoctor(ctx context.Context, _ Deps, args Args) (Result, error) {
 	var sb strings.Builder
 	failed := 0
