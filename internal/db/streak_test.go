@@ -4,6 +4,8 @@ import (
 	"context"
 	"testing"
 	"time"
+
+	"github.com/stretchr/testify/require"
 )
 
 // mealOnDay creates a Meal with EatenAt set to noon on the given date in UTC.
@@ -102,6 +104,14 @@ func TestComputeStreak_longStreak(t *testing.T) {
 }
 
 // ─── Store.Streak integration tests ──────────────────────────────────────────
+
+func TestStoreStreak_listError(t *testing.T) {
+	ctx := context.Background()
+	store := newTestStore(t)
+	require.NoError(t, store.Close())
+	_, err := store.Streak(ctx, time.Now(), time.UTC)
+	require.Error(t, err)
+}
 
 func TestStoreStreak_empty(t *testing.T) {
 	ctx := context.Background()
