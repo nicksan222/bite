@@ -69,6 +69,16 @@ type Tool struct {
 	Examples []Example
 	Params   []Param
 	Run      func(ctx context.Context, deps Deps, args Args) (Result, error)
+
+	// SkipAI hides this tool from AITools() and the system-prompt appendix.
+	// Use for cobra-only commands that don't make sense as model-callable
+	// tools (the chat launcher itself, for instance — the model is *inside*
+	// the chat, it can't enter another).
+	SkipAI bool
+	// SkipSlash hides this tool from the /<name> dispatcher and from /help.
+	// Same use case as SkipAI: the chat launcher would recursively spawn a
+	// TUI inside the TUI.
+	SkipSlash bool
 }
 
 // Example is one usage row for `bite --help`: the command line a user would

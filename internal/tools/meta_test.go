@@ -47,13 +47,41 @@ func TestMeta_everyToolReachesEverySurface(t *testing.T) {
 
 	for _, tool := range all {
 		t.Run(tool.Name, func(t *testing.T) {
-			_, inAI := aiNames[tool.Name]
-			assert.True(t, inAI, "tool %q missing from AITools()", tool.Name)
-
+			// Cobra is universal: every tool is a `bite <name>` subcommand.
 			_, inCobra := cobraNames[tool.Name]
 			assert.True(t, inCobra, "tool %q missing from RegisterCobra()", tool.Name)
 
-			assert.Contains(t, appendix, tool.Name, "tool %q missing from system-prompt appendix", tool.Name)
+			// AI surface is conditional on SkipAI.
+			_, inAI := aiNames[tool.Name]
+			if tool.SkipAI {
+				assert.False(t, inAI, "tool %q has SkipAI but appears in AITools()", tool.Name)
+				assert.NotContains(t, appendix, "### "+tool.Name,
+					"tool %q has SkipAI but appears in system-prompt appendix", tool.Name)
+			} else {
+				assert.True(t, inAI, "tool %q missing from AITools()", tool.Name)
+				assert.Contains(t, appendix, tool.Name, "tool %q missing from system-prompt appendix", tool.Name)
+			}
+		})
+	}
+}
+
+// TestMeta_skipSlashHidesFromDispatch verifies SkipSlash tools are unreachable
+// via /<name> and absent from /help, while still being reachable via cobra.
+func TestMeta_skipSlashHidesFromDispatch(t *testing.T) {
+	for _, tool := range All() {
+		if !tool.SkipSlash {
+			continue
+		}
+		t.Run(tool.Name, func(t *testing.T) {
+			out := Dispatch(context.Background(), Deps{}, "/"+tool.Name)
+			require.Error(t, out.ParseError, "slash dispatch should reject SkipSlash tool %q", tool.Name)
+			assert.Contains(t, out.ParseError.Error(), "unknown command")
+
+			help := Dispatch(context.Background(), Deps{}, "/help")
+			assert.NotContains(t, help.Result.Text, "/"+tool.Name+" ",
+				"SkipSlash tool %q must not appear in /help", tool.Name)
+			assert.NotContains(t, help.Result.Text, "/"+tool.Name+"\n",
+				"SkipSlash tool %q must not appear in /help", tool.Name)
 		})
 	}
 }

@@ -18,6 +18,11 @@ func RenderAppendix() string {
 	b.WriteString("\n\n## Available tools\n\n")
 	b.WriteString("You have access to the following tools. Each is also available to the user as a CLI subcommand and as a /<name> slash command in chat.\n")
 	for _, t := range all {
+		// SkipAI tools (e.g. chat itself) aren't model-callable; omit them
+		// from the appendix so the model isn't tempted to "call" them.
+		if t.SkipAI {
+			continue
+		}
 		b.WriteString("\n### ")
 		b.WriteString(t.Name)
 		b.WriteString("\n")

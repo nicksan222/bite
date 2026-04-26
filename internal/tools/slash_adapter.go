@@ -54,7 +54,9 @@ func Dispatch(ctx context.Context, deps Deps, line string) SlashOutcome {
 	}
 
 	tool, ok := Get(name)
-	if !ok {
+	if !ok || tool.SkipSlash {
+		// SkipSlash tools (like /chat) deliberately have no slash form. Treat
+		// them as unknown so the dispatcher's error message stays consistent.
 		return SlashOutcome{ParseError: fmt.Errorf("unknown command: /%s — type /help for the list", name)}
 	}
 
@@ -217,6 +219,9 @@ func helpText() string {
 	rows := make([]row, 0, len(all)+1)
 	width := 0
 	for _, t := range all {
+		if t.SkipSlash {
+			continue
+		}
 		sig, _, _ := positionalSignature(t)
 		left := "/" + t.Name
 		if sig != "" {

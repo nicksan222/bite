@@ -12,11 +12,15 @@ import (
 
 // AITools renders every registered tool as an ai.Tool, ready to pass to
 // ai.WithTools. Each ai.Tool's Execute closure parses JSON args, calls the
-// underlying Run, and returns the rendered Result text.
+// underlying Run, and returns the rendered Result text. Tools with SkipAI
+// set are excluded — they live as cobra-only commands.
 func AITools(deps Deps) []ai.Tool {
 	all := All()
 	out := make([]ai.Tool, 0, len(all))
 	for _, t := range all {
+		if t.SkipAI {
+			continue
+		}
 		out = append(out, toAITool(t, deps))
 	}
 	return out
