@@ -9,14 +9,13 @@ import (
 
 	"github.com/nicksan222/bite/internal/ai"
 	"github.com/nicksan222/bite/internal/db"
-	"github.com/nicksan222/bite/internal/tui"
 )
 
-// RunChatTUI is the full chat-launch flow: load config, open store, then run
-// the bubbletea program. Used by cli/root.go's no-arg `bite` invocation. The
-// AI client is built lazily — RunChatWithDeps' RequireAI gate still ensures
-// a missing ANTHROPIC_API_KEY errors before the TUI opens, while keeping
-// this path symmetric with the cobra path (`bite chat`).
+// RunChatTUI is the no-cobra entry point used by `bite` (no subcommand): it
+// opens the store + lazyAI, then dispatches through the registered chat Tool
+// so there's exactly one place that actually knows how to launch the TUI
+// (the chat tool's Run). cli/root.go calls this; everything else flows
+// through cobra's normal subcommand path.
 func RunChatTUI(ctx context.Context, resumeID int64) error {
 	cfg, err := LoadConfig()
 	if err != nil {
@@ -33,29 +32,8 @@ func RunChatTUI(ctx context.Context, resumeID int64) error {
 		Model:        cfg.Model,
 		OpenAIAPIKey: cfg.OpenAIAPIKey,
 	}
-	return RunChatWithDeps(ctx, deps, resumeID)
-}
-
-// RunChatWithDeps is the inner chat-launcher: given a fully-populated Deps
-// (Store, AI, Model required), prepare a session and run the TUI. Splitting
-// this out lets the chat Tool reuse the cobra-adapter's already-built deps
-// instead of re-opening the store.
-//
-// Validates the AI client up front via Deps.RequireAI so a missing
-// ANTHROPIC_API_KEY surfaces before the TUI opens.
-func RunChatWithDeps(ctx context.Context, deps Deps, resumeID int64) error {
-	if err := deps.RequireAI(); err != nil {
-		return err
-	}
-	convID, history, err := PrepareSession(ctx, deps.Store, deps.Model, resumeID)
-	if err != nil {
-		return err
-	}
-	persist := NewChatPersister(deps.Store, convID, len(history) > 0)
-	prog := tui.New(ctx, deps.AI, persist, history,
-		ChatStreamOptions(deps),
-		tui.WithSlashHandler(NewSlashHandler(deps)))
-	_, err = prog.Run()
+	chat := MustGet("chat")
+	_, err = chat.Run(ctx, deps, NewArgsForTool(chat, map[string]any{"resume": resumeID}))
 	return err
 }
 
