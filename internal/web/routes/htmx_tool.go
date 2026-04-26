@@ -3,7 +3,6 @@ package routes
 import (
 	"bytes"
 	"errors"
-	"html"
 	"html/template"
 	"net/http"
 
@@ -37,12 +36,19 @@ func htmxTool(d Deps) fiber.Handler {
 	}
 }
 
-// htmlAlert wraps a message in daisyUI's alert-error component. The
-// markup is small enough to inline; centralising means the handler's
-// error branches can't drift from one another. html.EscapeString is
-// safe here because the sole interpolation is in plain text content.
+// alertTmpl wraps a message in daisyUI's alert-error component. Routed
+// through html/template so escape behavior matches resultTmpl below —
+// one escape primitive across the whole HTMX surface.
+var alertTmpl = template.Must(template.New("alert").Parse(
+	`<div role="alert" class="alert alert-error"><span>{{.}}</span></div>`,
+))
+
+// htmlAlert centralises the error-branch markup so the handler can't
+// drift between branches.
 func htmlAlert(msg string) string {
-	return `<div role="alert" class="alert alert-error"><span>` + html.EscapeString(msg) + `</span></div>`
+	var buf bytes.Buffer
+	_ = alertTmpl.Execute(&buf, msg)
+	return buf.String()
 }
 
 // resultTmpl renders a tool Result as an HTMX fragment. html/template
