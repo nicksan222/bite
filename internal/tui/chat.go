@@ -199,7 +199,7 @@ func (m model) View() string {
 	case m.streaming:
 		status = m.spinner.View() + hintStyle.Render(" thinking…")
 	default:
-		status = hintStyle.Render("ready • Enter to send • Ctrl+C to quit")
+		status = hintStyle.Render("ready • Enter to send • /help • Ctrl+C to quit")
 	}
 
 	return strings.Join([]string{
