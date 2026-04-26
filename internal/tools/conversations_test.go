@@ -30,6 +30,21 @@ func TestConversationsList_returnsTable(t *testing.T) {
 	assert.Len(t, res.Table.Rows, 2)
 }
 
+func TestConversationsList_untitledFallback(t *testing.T) {
+	// A conversation with an empty title (fresh chat before the first user
+	// message sets the title) must render as "(untitled)" rather than blank.
+	ctx := context.Background()
+	deps := freshDeps(t)
+	_, err := deps.Store.NewConversation(ctx, "claude-x", "")
+	require.NoError(t, err)
+
+	res, err := MustGet("conversations_list").Run(ctx, deps, NewArgs(nil))
+	require.NoError(t, err)
+	require.NotNil(t, res.Table)
+	require.Len(t, res.Table.Rows, 1)
+	assert.Equal(t, "(untitled)", res.Table.Rows[0][3])
+}
+
 func TestConversationShow_renders(t *testing.T) {
 	ctx := context.Background()
 	deps := freshDeps(t)
