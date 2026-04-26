@@ -385,6 +385,31 @@ func TestValidate_exampleEmptyDesc_fails(t *testing.T) {
 	assert.Error(t, tt.validate())
 }
 
+func TestValidate_exampleForWrongTool_fails(t *testing.T) {
+	// Example invokes a different tool than the one declaring it. Catches
+	// copy-paste mistakes that would otherwise show up under the wrong
+	// section of `bite --help`.
+	tt := noopTool("alpha")
+	tt.Examples = []Example{{Cmd: "bite beta --foo", Desc: "wrong tool"}}
+	assert.Error(t, tt.validate())
+}
+
+func TestValidate_examplePrefixIsTokenBoundary(t *testing.T) {
+	// "bite logger" must NOT validate as an example for tool "log" — the
+	// match has to be on the whole tool-name token.
+	tt := noopTool("log")
+	tt.Examples = []Example{{Cmd: "bite logger --foo", Desc: "longer name"}}
+	assert.Error(t, tt.validate())
+}
+
+func TestValidate_exampleBareToolNameOK(t *testing.T) {
+	// `bite meals_today` (no args) is a valid example — Cmd may be exactly
+	// "bite <tool>" without trailing args/flags.
+	tt := noopTool("meals_today")
+	tt.Examples = []Example{{Cmd: "bite meals_today", Desc: "today's intake"}}
+	assert.NoError(t, tt.validate())
+}
+
 func TestValidate_requiredWithDefault_fails(t *testing.T) {
 	// Required + Default is contradictory — the default is unreachable.
 	tt := noopTool("contradict")

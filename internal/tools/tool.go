@@ -116,9 +116,12 @@ func (t Tool) validate() error {
 		return fmt.Errorf("tool %q: nil Run", t.Name)
 	}
 
+	// Every Example must invoke this tool — `bite <tool-name>` — so the
+	// rendered help block can't accidentally end up under the wrong tool.
+	wantPrefix := "bite " + t.Name
 	for i, ex := range t.Examples {
-		if !strings.HasPrefix(ex.Cmd, "bite ") {
-			return fmt.Errorf("tool %q: example[%d].Cmd %q must start with 'bite '", t.Name, i, ex.Cmd)
+		if ex.Cmd != wantPrefix && !strings.HasPrefix(ex.Cmd, wantPrefix+" ") {
+			return fmt.Errorf("tool %q: example[%d].Cmd %q must start with %q", t.Name, i, ex.Cmd, wantPrefix)
 		}
 		if ex.Desc == "" {
 			return fmt.Errorf("tool %q: example[%d].Desc is empty", t.Name, i)

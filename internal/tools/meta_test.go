@@ -58,16 +58,16 @@ func TestMeta_everyToolReachesEverySurface(t *testing.T) {
 	}
 }
 
-// TestMeta_examplesAreWellFormed iterates every registered tool's Examples
-// (if any) and asserts the shape: Cmd starts with "bite " and is non-empty,
-// Desc is non-empty. Stops a future tool from registering an example like
-// `Cmd: "log_meal …", Desc: ""` that would render mis-aligned in --help.
+// TestMeta_examplesAreWellFormed double-checks every registered tool's
+// Examples — registration-time validate() already enforces this contract,
+// but the meta-test is the live tripwire if validate() is ever loosened.
 func TestMeta_examplesAreWellFormed(t *testing.T) {
 	for _, tool := range All() {
 		for _, ex := range tool.Examples {
 			t.Run(tool.Name+":"+ex.Cmd, func(t *testing.T) {
-				assert.True(t, strings.HasPrefix(ex.Cmd, "bite "),
-					"example Cmd %q must start with 'bite '", ex.Cmd)
+				wantPrefix := "bite " + tool.Name
+				ok := ex.Cmd == wantPrefix || strings.HasPrefix(ex.Cmd, wantPrefix+" ")
+				assert.True(t, ok, "example Cmd %q must start with %q", ex.Cmd, wantPrefix)
 				assert.NotEmpty(t, ex.Desc, "example Desc must be non-empty")
 			})
 		}
