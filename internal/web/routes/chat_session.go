@@ -24,7 +24,7 @@ var chatSessionTTL = 6 * time.Hour
 // chatSessionStore holds every active session in memory. Restart loses
 // history, which is acceptable: the dashboard is local-only and a long
 // conversation wouldn't survive an editor save anyway with `make web-dev`.
-var chatSessionStore = newSessionStore()
+var chatSessionStore = &sessionStore{sessions: map[string]*chatSession{}}
 
 type chatSession struct {
 	history []ai.Message
@@ -34,10 +34,6 @@ type chatSession struct {
 type sessionStore struct {
 	mu       sync.Mutex
 	sessions map[string]*chatSession
-}
-
-func newSessionStore() *sessionStore {
-	return &sessionStore{sessions: map[string]*chatSession{}}
 }
 
 // getOrCreate returns the session bound to c's cookie, creating one (and
