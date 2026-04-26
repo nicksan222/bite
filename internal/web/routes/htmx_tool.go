@@ -28,9 +28,9 @@ func htmxTool(d Deps) fiber.Handler {
 		if err != nil {
 			var nf NotFoundError
 			if errors.As(err, &nf) {
-				return c.Status(http.StatusNotFound).Type("html").SendString(htmlAlert("tool not found: " + name))
+				return htmlError(c, http.StatusNotFound, "tool not found: "+name)
 			}
-			return c.Status(http.StatusBadRequest).Type("html").SendString(htmlAlert(err.Error()))
+			return htmlError(c, http.StatusBadRequest, err.Error())
 		}
 		return c.Type("html").SendString(renderResultHTML(res))
 	}
@@ -49,6 +49,13 @@ func htmlAlert(msg string) string {
 	var buf bytes.Buffer
 	_ = alertTmpl.Execute(&buf, msg)
 	return buf.String()
+}
+
+// htmlError sends an HTML alert fragment with the given status. Wraps
+// the htmlAlert + Status + Type triple so the handler stays a flat list
+// of intent rather than a chain of side-effects.
+func htmlError(c fiber.Ctx, status int, msg string) error {
+	return c.Status(status).Type("html").SendString(htmlAlert(msg))
 }
 
 // resultTmpl renders a tool Result as an HTMX fragment. html/template
