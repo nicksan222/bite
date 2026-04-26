@@ -26,6 +26,8 @@ func TestSessionStore_cookieSecuritySettings(t *testing.T) {
 	require.Equal(t, http.SameSiteLaxMode, c.SameSite)
 	require.Equal(t, "/", c.Path)
 	require.False(t, c.Secure, "Secure must be false on HTTP test requests")
+	require.Equal(t, int(chatSessionTTL.Seconds()), c.MaxAge,
+		"MaxAge must match server TTL so closing the browser doesn't drop history that's still alive on the server")
 }
 
 // TestSessionStore_appendTurn_unknownIDIsNoop pins the contract that

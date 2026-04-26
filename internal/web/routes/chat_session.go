@@ -64,6 +64,10 @@ func (s *sessionStore) ensure(c fiber.Ctx) (string, []ai.Message) {
 		// Mirror the request scheme: an HTTPS deployment gets a
 		// Secure cookie, local HTTP dev still works.
 		Secure: c.Secure(),
+		// Match the server-side TTL so the cookie outlives a browser
+		// restart — closing the tab and reopening within the window
+		// keeps the user on the same conversation.
+		MaxAge: int(chatSessionTTL.Seconds()),
 	})
 	return id, nil
 }
