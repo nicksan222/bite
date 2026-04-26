@@ -53,20 +53,26 @@ func (c Config) Addr() string {
 // the package testable: tests use app.Test() without binding a port.
 func New(deps Deps) *Server {
 	app := fiber.New(fiber.Config{
-		AppName: "bite",
-		ErrorHandler: func(c fiber.Ctx, err error) error {
-			code := http.StatusInternalServerError
-			var fe *fiber.Error
-			if errors.As(err, &fe) {
-				code = fe.Code
-			}
-			return c.Status(code).JSON(fiber.Map{"error": err.Error()})
-		},
+		AppName:      "bite",
+		ErrorHandler: errorEnvelope,
 	})
 	app.Use(requestid.New())
 	app.Use(recover.New())
 	routes.Register(app, deps)
 	return &Server{app: app}
+}
+
+// errorEnvelope is fiber's ErrorHandler — converts a returned error into
+// the {"error": ...} JSON envelope every other surface in the package
+// uses, mapping fiber.Error to its declared code and everything else to
+// 500.
+func errorEnvelope(c fiber.Ctx, err error) error {
+	code := http.StatusInternalServerError
+	var fe *fiber.Error
+	if errors.As(err, &fe) {
+		code = fe.Code
+	}
+	return c.Status(code).JSON(fiber.Map{"error": err.Error()})
 }
 
 // App exposes the underlying *fiber.App for tests, which use app.Test()
