@@ -80,6 +80,9 @@ func TestChatStart_unconfigured(t *testing.T) {
 	require.Equal(t, http.StatusServiceUnavailable, resp.StatusCode)
 	require.Contains(t, resp.Header.Get("Content-Type"), "text/html",
 		"unconfigured AI must surface as an HTML alert (the form's hx-target is the transcript)")
+	body, _ := io.ReadAll(resp.Body)
+	require.Contains(t, string(body), "AI not configured")
+	require.Contains(t, string(body), `alert alert-error`)
 }
 
 // TestChatStart_returnsBubblesWithSSEConnect proves the POST handler
