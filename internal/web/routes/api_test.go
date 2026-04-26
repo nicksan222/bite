@@ -91,7 +91,7 @@ func TestAPI_invokeTool_notFound(t *testing.T) {
 	}))
 	resp, err := app.Test(postJSON("/api/tools/missing", `{}`))
 	require.NoError(t, err)
-	require.Equal(t, http.StatusNotFound, resp.StatusCode)
+	requireJSONError(t, resp, http.StatusNotFound, "tool not found: missing")
 }
 
 func TestAPI_invokeTool_runError(t *testing.T) {
@@ -100,7 +100,7 @@ func TestAPI_invokeTool_runError(t *testing.T) {
 	}))
 	resp, err := app.Test(postJSON("/api/tools/echo", `{}`))
 	require.NoError(t, err)
-	require.Equal(t, http.StatusBadRequest, resp.StatusCode)
+	requireJSONError(t, resp, http.StatusBadRequest, "boom")
 }
 
 func TestAPI_invokeTool_badJSON(t *testing.T) {
@@ -110,7 +110,23 @@ func TestAPI_invokeTool_badJSON(t *testing.T) {
 	}))
 	resp, err := app.Test(postJSON("/api/tools/echo", "not json"))
 	require.NoError(t, err)
-	require.Equal(t, http.StatusBadRequest, resp.StatusCode)
+	requireJSONError(t, resp, http.StatusBadRequest, "invalid json")
+}
+
+// requireJSONError asserts the JSON-error envelope every API surface
+// returns: the right status, application/json content type, and an
+// "error" field that contains wantSubstr. Centralised so a future
+// envelope tweak (e.g. adding a "code" field) is one edit.
+func requireJSONError(t *testing.T, resp *http.Response, status int, wantSubstr string) {
+	t.Helper()
+	require.Equal(t, status, resp.StatusCode)
+	require.Contains(t, resp.Header.Get("Content-Type"), "application/json")
+	var env struct {
+		Error string `json:"error"`
+	}
+	require.NoError(t, json.NewDecoder(resp.Body).Decode(&env))
+	require.Contains(t, env.Error, wantSubstr,
+		"error envelope must carry an actionable message — %q is missing %q", env.Error, wantSubstr)
 }
 
 // TestAPI_unconfiguredDeps locks in the contract that every surface
