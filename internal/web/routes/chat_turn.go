@@ -9,6 +9,11 @@ import (
 	"github.com/nicksan222/bite/internal/ai"
 )
 
+// chatStreamPathPrefix is the URL prefix the asst bubble's sse-connect
+// resolves under. Centralised so register.go (route mount), chat_turn.go
+// (template URL), and the tests all reach for the same string.
+const chatStreamPathPrefix = "/api/chat/stream/"
+
 // turnTTL bounds how long a stashed turn can sit waiting for the SSE
 // stream endpoint to pick it up. The page POSTs the form and the browser
 // immediately follows with the SSE GET, so this only protects against
@@ -80,7 +85,7 @@ var chatTurnTmpl = template.Must(template.New("chat-turn").Parse(
 </div>
 <div class="chat chat-start" data-role="assistant"
      hx-ext="sse"
-     sse-connect="/api/chat/stream/{{.TurnID}}"
+     sse-connect="` + chatStreamPathPrefix + `{{.TurnID}}"
      sse-close="done">
 	<div class="chat-bubble" sse-swap="delta" hx-swap="beforeend"></div>
 	<div class="alert alert-error empty:hidden mt-1" role="alert" sse-swap="error" hx-swap="textContent"></div>
