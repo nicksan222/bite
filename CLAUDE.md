@@ -177,7 +177,8 @@ ever needed, add a sibling file (e.g. `openai.go`) — don't build a generic
 provider system speculatively.
 
 ### Multimodal
-`bite analyze` is the single entry point for any combination of images,
+`bite analyze_meal` (estimate without saving) and `bite log_meal_from_media`
+(estimate + save) are the two entry points for any combination of images,
 audio, video, and text. Pre-processing lives in `internal/media`:
 
 - **Images** → sent directly via Claude vision (no preprocessing).
