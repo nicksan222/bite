@@ -300,7 +300,7 @@ func requireSSEErrorAndDone(t *testing.T, body, dataSubstr string) {
 
 // extractTurnID pulls the 32-char hex turn ID out of an HTML response
 // from POST /api/chat. Tests use this to drive the follow-up SSE GET
-// without faking the URL — keeps them couplied to the real wire shape.
+// without faking the URL — keeps them coupled to the real wire shape.
 func extractTurnID(t *testing.T, body string) string {
 	t.Helper()
 	m := turnIDPattern.FindStringSubmatch(body)
