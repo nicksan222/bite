@@ -80,9 +80,11 @@ func errorEnvelope(c fiber.Ctx, err error) error {
 // to Listen.
 func (s *Server) App() *fiber.App { return s.app }
 
-// Listen binds the configured address and serves until ctx is cancelled.
-// Cancellation triggers a graceful shutdown; any listener error is
-// returned.
+// Listen binds the configured address and serves until ctx is cancelled
+// or the listener errors. On cancellation we attempt a graceful shutdown
+// and return ctx.Err() — any listener error during shutdown is dropped
+// since the user-facing reason is the cancellation. A bind failure (or
+// any error before shutdown) is returned verbatim.
 func (s *Server) Listen(ctx context.Context, cfg Config) error {
 	addr := cfg.Addr()
 	errCh := make(chan error, 1)
