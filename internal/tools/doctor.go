@@ -18,12 +18,34 @@ func init() {
 		DescribeDynamic: doctorDescription,
 		Prompt: `Use doctor when the user reports something not working, asks "is bite set up?",
 or wants to verify the environment after a fresh install.`,
-		Params: []Param{
-			{Name: "ping", Type: ParamBool,
-				Desc: "Send a tiny test request to the model."},
-		},
-		Run: runDoctor,
+		// Params are derived from the gates declared by registered checks.
+		// Adding a gated check (e.g. Gate: "verbose") makes --verbose appear
+		// on `bite doctor` automatically — no edits to this file required.
+		Params: gateParams(),
+		Run:    runDoctor,
 	})
+}
+
+// gateParams collects every distinct Check.Gate from the registered checks
+// and returns them as Bool params. Order is stable (registration order via
+// Checks()) so help output doesn't flap.
+func gateParams() []Param {
+	seen := map[string]struct{}{}
+	var params []Param
+	for _, c := range Checks() {
+		if c.Gate == "" {
+			continue
+		}
+		if _, dup := seen[c.Gate]; dup {
+			continue
+		}
+		seen[c.Gate] = struct{}{}
+		params = append(params, Param{
+			Name: c.Gate, Type: ParamBool,
+			Desc: fmt.Sprintf("Run gated check %q.", c.Name),
+		})
+	}
+	return params
 }
 
 // doctorDescription assembles the full Long help text from the registered
