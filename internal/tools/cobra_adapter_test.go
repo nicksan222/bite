@@ -67,6 +67,25 @@ func indexOfNewline(s string) int {
 	return -1
 }
 
+// TestRegisterCobra_perToolHelpShowsExamples ensures each tool's own
+// Examples (not just the rootCmd's merged block) surface in
+// `bite <tool> --help`. Previously they only appeared on `bite --help`.
+func TestRegisterCobra_perToolHelpShowsExamples(t *testing.T) {
+	withCleanRegistry(t, func() {
+		Register(Tool{
+			Name: "demo", Summary: "s", Description: "d",
+			Examples: []Example{{Cmd: "bite demo --foo=1", Desc: "the demo example"}},
+			Run:      func(_ context.Context, _ Deps, _ Args) (Result, error) { return Result{}, nil },
+		})
+		root := &cobra.Command{Use: "test"}
+		RegisterCobra(root, StaticDeps(Deps{}))
+		out, err := runCmd(t, root, "demo", "--help")
+		require.NoError(t, err)
+		assert.Contains(t, out, "bite demo --foo=1")
+		assert.Contains(t, out, "the demo example")
+	})
+}
+
 func TestRegisterCobra_positionalParam(t *testing.T) {
 	withCleanRegistry(t, func() {
 		var seen Args

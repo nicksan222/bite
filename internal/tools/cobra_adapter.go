@@ -40,12 +40,18 @@ func RegisterCobra(root *cobra.Command, provide DepsProvider) {
 
 // renderExamples gathers Example rows from every registered tool and lays
 // them out as a padded "  cmd<spaces># desc" block matching cobra's default
-// example style.
+// example style. Used for the rootCmd's example block.
 func renderExamples() string {
 	var rows []Example
 	for _, t := range All() {
 		rows = append(rows, t.Examples...)
 	}
+	return renderExamplesFor(rows)
+}
+
+// renderExamplesFor lays out a specific Example slice (one tool's, or all
+// tools' merged). Returns "" when rows is empty so cobra omits the section.
+func renderExamplesFor(rows []Example) string {
 	if len(rows) == 0 {
 		return ""
 	}
@@ -65,9 +71,10 @@ func renderExamples() string {
 func toCobraCommand(t Tool, provide DepsProvider) *cobra.Command {
 	use, requiredPos, totalPos := buildUse(t)
 	cmd := &cobra.Command{
-		Use:   use,
-		Short: t.Summary,
-		Long:  t.Long(),
+		Use:     use,
+		Short:   t.Summary,
+		Long:    t.Long(),
+		Example: renderExamplesFor(t.Examples),
 		// Pick the cobra Args validator that produces the clearest error
 		// message for each positional shape:
 		//   - ExactArgs when every positional is required (most common),
