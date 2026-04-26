@@ -1,11 +1,32 @@
 package routes
 
 import (
+	"net/http"
 	"testing"
 	"time"
 
 	"github.com/stretchr/testify/require"
 )
+
+// TestSessionStore_cookieSecuritySettings pins the chat-session cookie's
+// security flags. HttpOnly so JS can't exfiltrate the session ID,
+// SameSite=Lax so cross-site POSTs don't carry it (CSRF guard while
+// still allowing top-level navigation), and Path=/ because every chat
+// route shares the cookie. The Secure flag is exercised separately
+// because it depends on the request scheme.
+func TestSessionStore_cookieSecuritySettings(t *testing.T) {
+	app := newApp(Deps{AI: &stubStreamer{}})
+	resp, err := app.Test(postForm("/api/chat", map[string]string{"message": "hi"}))
+	require.NoError(t, err)
+	cookies := resp.Cookies()
+	require.Len(t, cookies, 1, "first POST must set exactly one cookie")
+	c := cookies[0]
+	require.Equal(t, chatSessionCookie, c.Name)
+	require.True(t, c.HttpOnly, "session cookie must be HttpOnly")
+	require.Equal(t, http.SameSiteLaxMode, c.SameSite)
+	require.Equal(t, "/", c.Path)
+	require.False(t, c.Secure, "Secure must be false on HTTP test requests")
+}
 
 // TestSessionStore_appendTurn_unknownIDIsNoop pins the contract that
 // appending to a missing session is silent — the SSE handler may race
