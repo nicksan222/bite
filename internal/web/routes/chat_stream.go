@@ -2,7 +2,6 @@ package routes
 
 import (
 	"bufio"
-	"bytes"
 	"cmp"
 	"context"
 	"fmt"
@@ -45,18 +44,15 @@ func chatStart(d Deps) fiber.Handler {
 			userMsg:   message,
 		})
 
-		var buf bytes.Buffer
-		if err := chatTurnTmpl.Execute(&buf, struct {
-			TurnID   string
-			UserText string
-		}{TurnID: turnID, UserText: message}); err != nil {
+		html, err := renderChatTurn(turnID, message)
+		if err != nil {
 			// Defensive: chatTurnTmpl parses at init and the data
 			// shape is fixed, so this branch is unreachable in
 			// practice — but if it ever fires, the form expects HTML
 			// and would render a JSON envelope as text.
 			return htmlError(c, http.StatusInternalServerError, "render chat turn: "+err.Error())
 		}
-		return c.Type("html").Send(buf.Bytes())
+		return c.Type("html").Send(html)
 	}
 }
 

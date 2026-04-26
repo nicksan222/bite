@@ -1,6 +1,7 @@
 package routes
 
 import (
+	"bytes"
 	"html/template"
 	"sync"
 	"time"
@@ -85,3 +86,16 @@ var chatTurnTmpl = template.Must(template.New("chat-turn").Parse(
 	<div class="alert alert-error empty:hidden mt-1" role="alert" sse-swap="error" hx-swap="textContent"></div>
 </div>
 `))
+
+// renderChatTurn produces the HTML fragment hx-swapped into the
+// transcript on a successful POST /api/chat. Encapsulating the
+// anonymous-struct dance keeps the handler readable and gives the
+// template's data shape one canonical home.
+func renderChatTurn(turnID, userText string) ([]byte, error) {
+	var buf bytes.Buffer
+	err := chatTurnTmpl.Execute(&buf, struct {
+		TurnID   string
+		UserText string
+	}{TurnID: turnID, UserText: userText})
+	return buf.Bytes(), err
+}
