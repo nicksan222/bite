@@ -10,11 +10,12 @@ import (
 )
 
 // assetsFS holds every static asset (CSS, JS, htmx.min.js) the dashboard
-// serves and every Go template it renders. Both subtrees ship in the
-// binary, so `bite web` is fully self-contained — no node_modules, no
-// runtime CDN dependency.
+// serves and every Go template it renders. The bare `static` directive
+// is recursive, so adding e.g. static/img/ later does not silently drop
+// files. The views pattern is restricted to *.html so editor backups or
+// .DS_Store leaks never end up in the binary.
 //
-//go:embed views/*.html static/*
+//go:embed views/*.html static
 var assetsFS embed.FS
 
 // pageTemplates maps a page filename ("chat.html") to the layout pre-bound
