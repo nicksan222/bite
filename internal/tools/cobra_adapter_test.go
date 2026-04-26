@@ -144,6 +144,33 @@ func TestRegisterCobra_requiredFlag_enforcesPresence(t *testing.T) {
 	})
 }
 
+func TestRegisterCobra_omittedOptionalPositional_isAbsent(t *testing.T) {
+	// When an optional positional is omitted, absorbPositionals breaks out
+	// without writing the param into Args. The Run callback should see Has
+	// = false for it.
+	withCleanRegistry(t, func() {
+		var seen Args
+		Register(Tool{
+			Name: "maybe_pos", Summary: "s", Description: "d",
+			Params: []Param{
+				{Name: "first", Type: ParamString, Required: true, Positional: true},
+				{Name: "second", Type: ParamString, Positional: true},
+			},
+			Run: func(_ context.Context, _ Deps, a Args) (Result, error) {
+				seen = a
+				return Result{Text: "ok"}, nil
+			},
+		})
+		root := &cobra.Command{Use: "test"}
+		RegisterCobra(root, StaticDeps(Deps{}))
+
+		_, err := runCmd(t, root, "maybe_pos", "alpha")
+		require.NoError(t, err)
+		assert.Equal(t, "alpha", seen.String("first"))
+		assert.False(t, seen.Has("second"), "omitted optional positional must not appear in Args")
+	})
+}
+
 func TestRegisterCobra_unchangedFlagAbsent(t *testing.T) {
 	withCleanRegistry(t, func() {
 		var seen Args
