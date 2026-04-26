@@ -10,10 +10,12 @@ func init() {
 	Register(Tool{
 		Name:    "doctor",
 		Summary: "Run health checks on bite's environment.",
-		// Description is computed dynamically from the Check registry — adding
-		// a new Check automatically extends the help text.
+		// Both Description and DescribeDynamic must be non-empty for the
+		// registry to accept the tool. Description is the static fallback;
+		// DescribeDynamic is what cobra actually shows so the help text picks
+		// up checks registered in any order.
+		Description:     "Run health checks on bite's environment.",
 		DescribeDynamic: doctorDescription,
-		Description:     doctorDescription(),
 		Prompt: `Use doctor when the user reports something not working, asks "is bite set up?",
 or wants to verify the environment after a fresh install.`,
 		Params: []Param{

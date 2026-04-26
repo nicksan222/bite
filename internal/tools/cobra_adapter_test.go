@@ -46,8 +46,10 @@ func TestRegisterCobra_helpRendersForEveryTool(t *testing.T) {
 			RegisterCobra(root, StaticDeps(Deps{}))
 			out, err := runCmd(t, root, tool.Name, "--help")
 			require.NoError(t, err)
-			// First line of Description shows in --help.
-			firstLine := tool.Description
+			// First line of Long() (which honours DescribeDynamic) shows in
+			// --help. Walking Long here means the test stays correct for
+			// tools that compute their long help dynamically.
+			firstLine := tool.Long()
 			if idx := indexOfNewline(firstLine); idx > 0 {
 				firstLine = firstLine[:idx]
 			}
