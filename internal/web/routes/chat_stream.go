@@ -73,30 +73,41 @@ func chatStream(d Deps) fiber.Handler {
 			return jsonError(c, http.StatusBadGateway, err.Error())
 		}
 
-		// Headers stay deferred until Stream succeeds so the JSON-error
-		// fallback above isn't shipped with SSE Content-Type already set.
-		c.Set("Content-Type", "text/event-stream")
-		c.Set("Cache-Control", "no-cache")
-		c.Set("Connection", "keep-alive")
-		c.Set("X-Accel-Buffering", "no")
-
+		setSSEHeaders(c)
 		return c.SendStreamWriter(func(w *bufio.Writer) {
-			for ev := range events {
-				switch {
-				case ev.Err != nil:
-					writeSSE(w, "error", sseError{Message: ev.Err.Error()})
-					return
-				case ev.Done:
-					writeSSE(w, "done", sseDone{Final: ev.Final})
-					return
-				case ev.Delta != "":
-					writeSSE(w, "delta", sseDelta{Text: ev.Delta})
-					if err := w.Flush(); err != nil {
-						return
-					}
-				}
-			}
+			pumpStreamEvents(w, events)
 		})
+	}
+}
+
+// setSSEHeaders configures the response for a Server-Sent Events stream.
+// Called only once Stream has succeeded so a JSON-error fallback above
+// isn't preceded by SSE Content-Type being staged.
+func setSSEHeaders(c fiber.Ctx) {
+	c.Set("Content-Type", "text/event-stream")
+	c.Set("Cache-Control", "no-cache")
+	c.Set("Connection", "keep-alive")
+	c.Set("X-Accel-Buffering", "no")
+}
+
+// pumpStreamEvents drains the model channel into SSE events. Returns
+// when the channel closes naturally, on a terminal Done/Err event, or
+// when a write to w fails (which means the client disconnected).
+func pumpStreamEvents(w *bufio.Writer, events <-chan ai.StreamEvent) {
+	for ev := range events {
+		switch {
+		case ev.Err != nil:
+			writeSSE(w, "error", sseError{Message: ev.Err.Error()})
+			return
+		case ev.Done:
+			writeSSE(w, "done", sseDone{Final: ev.Final})
+			return
+		case ev.Delta != "":
+			writeSSE(w, "delta", sseDelta{Text: ev.Delta})
+			if err := w.Flush(); err != nil {
+				return
+			}
+		}
 	}
 }
 
