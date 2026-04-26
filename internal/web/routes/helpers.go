@@ -52,17 +52,20 @@ func render(c fiber.Ctx, contentTmpl string, data any) error {
 // (matches set_goals' Has-vs-zero distinction).
 func mergeArgs(q map[string]string, form map[string]string) map[string]any {
 	out := make(map[string]any, len(q)+len(form))
-	for k, v := range q {
-		if v != "" {
-			out[k] = v
-		}
-	}
-	for k, v := range form {
-		if v != "" {
-			out[k] = v
-		}
-	}
+	addNonEmpty(out, q)
+	addNonEmpty(out, form)
 	return out
+}
+
+// addNonEmpty copies src entries into dst, skipping empty-string values.
+// Splitting this out keeps mergeArgs' precedence rule (form overwrites
+// query) literal — read top-to-bottom — without duplicating the filter.
+func addNonEmpty(dst map[string]any, src map[string]string) {
+	for k, v := range src {
+		if v != "" {
+			dst[k] = v
+		}
+	}
 }
 
 // formArgs returns the URL-encoded form body as a map. Fiber returns
