@@ -156,7 +156,7 @@ func TestListRecentMeals(t *testing.T) {
 	ctx := context.Background()
 	store := newTestStore(t)
 
-	for i := 0; i < 5; i++ {
+	for i := range 5 {
 		_, _ = store.SaveMeal(ctx, MealInput{
 			Title:   "meal",
 			EatenAt: time.Now().Add(time.Duration(i) * time.Minute),
@@ -229,7 +229,7 @@ func TestListConversations_defaultLimit(t *testing.T) {
 	ctx := context.Background()
 	store := newTestStore(t)
 
-	for i := 0; i < 3; i++ {
+	for range 3 {
 		_, _ = store.NewConversation(ctx, "m", "")
 	}
 
@@ -270,7 +270,7 @@ func TestAppendMessage_touchError(t *testing.T) {
 // at store.go:141–143 without requiring a real race condition.
 type failOnExecDBTX struct{ *sql.DB }
 
-func (f *failOnExecDBTX) ExecContext(_ context.Context, _ string, _ ...interface{}) (sql.Result, error) {
+func (f *failOnExecDBTX) ExecContext(_ context.Context, _ string, _ ...any) (sql.Result, error) {
 	return nil, errors.New("injected exec error")
 }
 

@@ -120,7 +120,7 @@ func TestStoreStreak_withMeals(t *testing.T) {
 	store := newTestStore(t)
 	now := time.Date(2026, 4, 25, 18, 0, 0, 0, time.UTC)
 
-	for i := 0; i < 3; i++ {
+	for i := range 3 {
 		day := time.Date(2026, 4, 23+i, 12, 0, 0, 0, time.UTC)
 		_, _ = store.SaveMeal(ctx, MealInput{Title: "m", EatenAt: day})
 	}
