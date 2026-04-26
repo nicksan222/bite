@@ -34,12 +34,7 @@ func chatStart(d Deps) fiber.Handler {
 			return htmlError(c, http.StatusBadRequest, "empty message")
 		}
 
-		sessionID, sess := chatSessionStore.getOrCreate(c)
-		// Copy before appending: appending the user turn directly into
-		// sess.history would mutate the session's shared backing array
-		// when sess.history has spare capacity, which races concurrent
-		// readers in the session store.
-		history := append([]ai.Message{}, sess.history...)
+		sessionID, history := chatSessionStore.ensure(c)
 		history = append(history, ai.Message{Role: ai.RoleUser, Content: message})
 
 		turnID := turnStore.stash(pendingTurn{

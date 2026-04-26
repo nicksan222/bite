@@ -36,9 +36,12 @@ type sessionStore struct {
 	sessions map[string]*chatSession
 }
 
-// getOrCreate returns the session bound to c's cookie, creating one (and
-// setting the cookie) on first call.
-func (s *sessionStore) getOrCreate(c fiber.Ctx) (string, *chatSession) {
+// ensure returns the session ID bound to c's cookie (creating one and
+// setting the cookie on first call) along with a snapshot of the
+// session's history. Returning a copy — not the live *chatSession —
+// keeps callers off any shared backing array, so a concurrent
+// appendTurn cannot race a handler reading prior turns.
+func (s *sessionStore) ensure(c fiber.Ctx) (string, []ai.Message) {
 	id := c.Cookies(chatSessionCookie)
 	s.mu.Lock()
 	defer s.mu.Unlock()
@@ -46,12 +49,11 @@ func (s *sessionStore) getOrCreate(c fiber.Ctx) (string, *chatSession) {
 	if id != "" {
 		if sess, ok := s.sessions[id]; ok {
 			sess.last = time.Now()
-			return id, sess
+			return id, append([]ai.Message{}, sess.history...)
 		}
 	}
 	id = newRandomID()
-	sess := &chatSession{last: time.Now()}
-	s.sessions[id] = sess
+	s.sessions[id] = &chatSession{last: time.Now()}
 	c.Cookie(&fiber.Cookie{
 		Name:     chatSessionCookie,
 		Value:    id,
@@ -59,7 +61,7 @@ func (s *sessionStore) getOrCreate(c fiber.Ctx) (string, *chatSession) {
 		HTTPOnly: true,
 		SameSite: fiber.CookieSameSiteLaxMode,
 	})
-	return id, sess
+	return id, nil
 }
 
 // appendTurn appends one user/assistant exchange to the session's
