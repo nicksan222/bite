@@ -82,6 +82,6 @@ var chatTurnTmpl = template.Must(template.New("chat-turn").Parse(
      sse-connect="/api/chat/stream/{{.TurnID}}"
      sse-close="done">
 	<div class="chat-bubble" sse-swap="delta" hx-swap="beforeend"></div>
-	<div class="chat-bubble alert alert-error empty:hidden mt-1" role="alert" sse-swap="error" hx-swap="textContent"></div>
+	<div class="alert alert-error empty:hidden mt-1" role="alert" sse-swap="error" hx-swap="textContent"></div>
 </div>
 `))
