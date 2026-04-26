@@ -52,3 +52,17 @@ func (d Deps) LocOrDefault() *time.Location {
 	}
 	return time.Local
 }
+
+// RequireAI lets a tool that strictly needs the model (e.g. chat) fail fast
+// before doing any user-facing work. If d.AI implements EnsureUsable it is
+// called; otherwise this is a no-op. Test stubs don't implement EnsureUsable
+// so unit tests pass through cleanly without env juggling.
+func (d Deps) RequireAI() error {
+	if d.AI == nil {
+		return nil
+	}
+	if e, ok := d.AI.(aiEnsurer); ok {
+		return e.EnsureUsable()
+	}
+	return nil
+}

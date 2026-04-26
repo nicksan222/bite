@@ -12,10 +12,11 @@ import (
 	"github.com/nicksan222/bite/internal/tui"
 )
 
-// RunChatTUI is the full chat-launch flow: load config, open store, build the
-// AI client, then run the bubbletea program. Used by cli/root.go's no-arg
-// `bite` invocation. The chat Tool's Run uses RunChatWithDeps directly so
-// cobra-built Deps (already containing store + lazy AI) are reused.
+// RunChatTUI is the full chat-launch flow: load config, open store, then run
+// the bubbletea program. Used by cli/root.go's no-arg `bite` invocation. The
+// AI client is built lazily — RunChatWithDeps' RequireAI gate still ensures
+// a missing ANTHROPIC_API_KEY errors before the TUI opens, while keeping
+// this path symmetric with the cobra path (`bite chat`).
 func RunChatTUI(ctx context.Context, resumeID int64) error {
 	cfg, err := LoadConfig()
 	if err != nil {
@@ -26,13 +27,9 @@ func RunChatTUI(ctx context.Context, resumeID int64) error {
 		return err
 	}
 	defer store.Close()
-	client, err := OpenAIClient(ctx, cfg)
-	if err != nil {
-		return err
-	}
 	deps := Deps{
 		Store:        store,
-		AI:           client,
+		AI:           lazyAI{cfg: cfg},
 		Model:        cfg.Model,
 		OpenAIAPIKey: cfg.OpenAIAPIKey,
 	}
@@ -43,7 +40,13 @@ func RunChatTUI(ctx context.Context, resumeID int64) error {
 // (Store, AI, Model required), prepare a session and run the TUI. Splitting
 // this out lets the chat Tool reuse the cobra-adapter's already-built deps
 // instead of re-opening the store.
+//
+// Validates the AI client up front via Deps.RequireAI so a missing
+// ANTHROPIC_API_KEY surfaces before the TUI opens.
 func RunChatWithDeps(ctx context.Context, deps Deps, resumeID int64) error {
+	if err := deps.RequireAI(); err != nil {
+		return err
+	}
 	convID, history, err := PrepareSession(ctx, deps.Store, deps.Model, resumeID)
 	if err != nil {
 		return err

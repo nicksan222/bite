@@ -77,3 +77,14 @@ func (l lazyAI) Stream(ctx context.Context, history []ai.Message, opts ...ai.Str
 	}
 	return c.Stream(ctx, history, opts...)
 }
+
+// EnsureUsable lets a tool fail fast on missing ANTHROPIC_API_KEY before
+// blocking on user input. RunChatWithDeps calls this so `bite chat` with no
+// key errors immediately instead of opening the TUI and breaking on the
+// first message.
+func (l lazyAI) EnsureUsable() error { return l.cfg.RequireAPIKey() }
+
+// aiEnsurer is satisfied by lazyAI (and any future eagerly-built client that
+// wants the same fail-fast contract). RequireAI uses a duck-typed check so
+// production deps work without forcing test deps to grow a no-op method.
+type aiEnsurer interface{ EnsureUsable() error }

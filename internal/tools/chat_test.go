@@ -36,3 +36,22 @@ func TestRunChat_propagatesPrepareSessionError(t *testing.T) {
 	_, err := tool.Run(context.Background(), deps, NewArgsForTool(tool, map[string]any{"resume": int64(9999)}))
 	require.Error(t, err)
 }
+
+// TestRunChat_failsFastWhenAIUnusable proves the cobra path (lazyAI) errors
+// before the TUI opens when ANTHROPIC_API_KEY is absent. Without
+// Deps.RequireAI / lazyAI.EnsureUsable, the user would see the TUI launch
+// then break on the first message — far worse UX than the historical eager
+// fail-fast.
+func TestRunChat_failsFastWhenAIUnusable(t *testing.T) {
+	stubChatEnv(t, map[string]string{"ANTHROPIC_API_KEY": ""})
+	deps, cleanup, err := CobraDepsProvider(context.Background())
+	require.NoError(t, err)
+	if cleanup != nil {
+		defer cleanup()
+	}
+	deps.Model = "test-model"
+	tool := MustGet("chat")
+	_, runErr := tool.Run(context.Background(), deps, NewArgsForTool(tool, nil))
+	require.Error(t, runErr)
+	assert.Contains(t, runErr.Error(), "ANTHROPIC_API_KEY")
+}
