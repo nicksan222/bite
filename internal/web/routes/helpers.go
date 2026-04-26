@@ -60,9 +60,9 @@ func mergeArgs(q map[string]string, form map[string]string) map[string]any {
 // non-nil even for empty bodies, so callers don't need a nil-check.
 func formArgs(c fiber.Ctx) map[string]string {
 	out := map[string]string{}
-	c.Request().PostArgs().VisitAll(func(k, v []byte) {
+	for k, v := range c.Request().PostArgs().All() {
 		out[string(k)] = string(v)
-	})
+	}
 	return out
 }
 
