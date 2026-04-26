@@ -144,6 +144,8 @@ func TestPages_chatFormWiring(t *testing.T) {
 		"chat input must carry a keydown handler so Enter submits (Shift+Enter newlines)")
 	require.Contains(t, got, `requestSubmit()`,
 		"keydown handler must call requestSubmit so form validation still runs")
+	require.Contains(t, got, `getElementById('chat-empty')?.remove()`,
+		"first submit must remove the empty-state welcome so it doesn't sit on top of the transcript")
 }
 
 // TestPages_mealsFormWiring locks in the load-bearing attributes on
