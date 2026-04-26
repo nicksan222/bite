@@ -4,7 +4,6 @@ import (
 	"context"
 	"errors"
 	"maps"
-	"sort"
 	"strings"
 	"testing"
 
@@ -31,14 +30,12 @@ func TestRegisterCheck_panicsOnInvalid(t *testing.T) {
 func TestRegisterCheck_panicsOnDuplicate(t *testing.T) {
 	checkMu.Lock()
 	saved := append([]Check(nil), checks...)
-	savedOrder := maps.Clone(checkOrder)
-	savedSerial := checkSerial
+	savedSet := maps.Clone(checked)
 	checkMu.Unlock()
 	t.Cleanup(func() {
 		checkMu.Lock()
 		checks = saved
-		checkOrder = savedOrder
-		checkSerial = savedSerial
+		checked = savedSet
 		checkMu.Unlock()
 	})
 
@@ -129,8 +126,9 @@ func TestChecks_orderStable(t *testing.T) {
 		namesA[i] = a[i].Name
 		namesB[i] = b[i].Name
 	}
-	assert.Equal(t, namesA, namesB)
-	assert.True(t, sort.SliceIsSorted(a, func(i, j int) bool {
-		return a[i].Severity < a[j].Severity || (a[i].Severity == a[j].Severity && checkOrder[a[i].Name] < checkOrder[a[j].Name])
-	}))
+	assert.Equal(t, namesA, namesB, "Checks() must return the same order on repeated calls")
+	for i := 1; i < len(a); i++ {
+		assert.LessOrEqual(t, int(a[i-1].Severity), int(a[i].Severity),
+			"Checks must be sorted by severity (hard before soft)")
+	}
 }

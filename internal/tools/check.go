@@ -53,10 +53,9 @@ func (c Check) validate() error {
 }
 
 var (
-	checkMu     sync.RWMutex
-	checks      []Check
-	checkOrder  = map[string]int{}
-	checkSerial int
+	checkMu sync.RWMutex
+	checks  []Check
+	checked = map[string]struct{}{}
 )
 
 // RegisterCheck adds a Check to the registry. Called from package-level
@@ -67,26 +66,22 @@ func RegisterCheck(c Check) {
 	}
 	checkMu.Lock()
 	defer checkMu.Unlock()
-	if _, dup := checkOrder[c.Name]; dup {
+	if _, dup := checked[c.Name]; dup {
 		panic(fmt.Errorf("check %q registered twice", c.Name))
 	}
-	checkOrder[c.Name] = checkSerial
-	checkSerial++
+	checked[c.Name] = struct{}{}
 	checks = append(checks, c)
 }
 
-// Checks returns every registered check sorted: hard first (in registration
-// order), then soft (in registration order). Stable across calls.
+// Checks returns every registered check sorted by severity (hard before
+// soft); SliceStable preserves the registration order within a severity.
 func Checks() []Check {
 	checkMu.RLock()
 	defer checkMu.RUnlock()
 	out := make([]Check, len(checks))
 	copy(out, checks)
 	sort.SliceStable(out, func(i, j int) bool {
-		if out[i].Severity != out[j].Severity {
-			return out[i].Severity < out[j].Severity
-		}
-		return checkOrder[out[i].Name] < checkOrder[out[j].Name]
+		return out[i].Severity < out[j].Severity
 	})
 	return out
 }
