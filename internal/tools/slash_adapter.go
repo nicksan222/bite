@@ -45,6 +45,9 @@ func Dispatch(ctx context.Context, deps Deps, line string) SlashOutcome {
 	}
 	name, rest, _ := strings.Cut(line[1:], " ")
 	name = strings.TrimSpace(name)
+	if name == "" {
+		return SlashOutcome{ParseError: fmt.Errorf("empty slash command — type /help for the list")}
+	}
 
 	if name == "help" {
 		return SlashOutcome{Result: Result{Text: helpText()}}

@@ -8,6 +8,14 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
+func TestDispatch_bareSlash(t *testing.T) {
+	withCleanRegistry(t, func() {
+		out := Dispatch(context.Background(), Deps{}, "/")
+		require.Error(t, out.ParseError)
+		assert.Contains(t, out.ParseError.Error(), "empty slash command")
+	})
+}
+
 func TestDispatch_unknownCommand(t *testing.T) {
 	withCleanRegistry(t, func() {
 		out := Dispatch(context.Background(), Deps{}, "/nope foo")
