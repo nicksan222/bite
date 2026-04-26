@@ -40,18 +40,28 @@ internal/
     kind.go                   # extension → image/audio/video
     audio.go                  # OpenAI Whisper transcription
     video.go                  # ffmpeg keyframe extraction (+ CheckFFmpeg)
-  cli/                        # cobra commands — one file per command
+  tools/                      # CENTRAL REGISTRY — one file per domain action / check
+    registry.go  tool.go      # Tool definition + Register/All/MustGet
+    check.go                  # Check definition + RegisterCheck/Checks (doctor)
+    ai_adapter.go             # AITools(deps) → []ai.Tool for chat
+    cobra_adapter.go          # RegisterCobra(root, provider) — auto subcommands
+    slash_adapter.go          # Dispatch(ctx, deps, "/cmd …") for TUI
+    systemprompt.go           # RenderAppendix() — auto persona injection
+    log_meal.go  meals_today.go  ask.go  doctor.go  …  # one tool per file
+    checks_config.go  checks_db.go  checks_ping.go  …  # one Check per concern
+  cli/                        # cobra root + chat TUI launcher only — nothing else
   config/                     # env + .env config (caarlos0/env)
   db/                         # persistence
     migrations/  queries/     # SQL files (sqlc + goose-format)
     sqlc/                     # GENERATED — do not edit
     store.go  migrate.go      # Store façade + embedded migration runner
-  tui/                        # bubbletea programs
+  tui/                        # bubbletea programs (uses tools.Dispatch for /-commands)
 ```
 
 | Adding… | Drop a file in… | Ritual |
 |---|---|---|
-| CLI command | `internal/cli/<name>.go` | `rootCmd.AddCommand(...)` in `init()` |
+| **Domain action / chat tool / slash command / CLI subcommand** | `internal/tools/<name>.go` (+ `<name>_test.go`) | `tools.Register(...)` in `init()` — auto-wires AI tool spec, cobra command, slash handler, system-prompt entry |
+| **Doctor health check** | `internal/tools/checks_<concern>.go` | `tools.RegisterCheck(...)` in `init()` — auto-extends `bite doctor` and `bite doctor --help` |
 | TUI screen | `internal/tui/<name>.go` | export `NewXxx(...) *tea.Program` |
 | DB table | `internal/db/migrations/000N_*.sql` + `internal/db/queries/<entity>.sql` | `make sqlc` |
 | Store method | method on `*db.Store` in `internal/db/store.go` | wrap one or more sqlc calls |
@@ -59,8 +69,53 @@ internal/
 | AI capability | function in `internal/ai/` (e.g. `analyze.go`) using the `*Client` | — |
 | Media handler | file in `internal/media/` (e.g. another transcription provider) | — |
 
-**One command per file.** If you find yourself putting two `cobra.Command`s in
-one file, split it.
+The `internal/cli/` folder is reserved for the rootCmd and the interactive
+chat launcher. Anything that fits the Tool shape goes in `internal/tools/`.
+
+**One tool / one command per file.** If you find yourself putting two
+`tools.Register` calls or two `cobra.Command`s in one file, split it.
+
+### How the tool registry works
+
+A `Tool` value carries everything needed by every surface:
+
+```go
+tools.Register(tools.Tool{
+    Name:        "log_meal",                       // canonical AI / cobra / slash name
+    Summary:     "Log a meal to the user's diary.",// one-line — cobra Short, prompt list
+    Description: "Estimate macros from text…",     // long form — cobra Long, AI tool desc
+    Prompt:      "Call log_meal whenever the user…",// auto-injected into chat persona
+    Params: []tools.Param{
+        {Name: "title", Type: tools.ParamString, Required: true, Positional: true},
+        {Name: "kcal",  Type: tools.ParamFloat},
+    },
+    Run: func(ctx context.Context, deps tools.Deps, args tools.Args) (tools.Result, error) {
+        // ... pure-ish business logic
+    },
+})
+```
+
+Adapters consume the registry:
+
+- `tools.AITools(deps)` → `[]ai.Tool` for `ai.WithTools` (called by `cli/chat.go`)
+- `tools.RegisterCobra(rootCmd, provider)` → cobra subcommands (called by `cli/root.go`)
+- `tools.Dispatch(ctx, deps, "/log_meal …")` → slash dispatch (called by TUI via `tui.WithSlashHandler`)
+- `tools.RenderAppendix()` → system-prompt addendum (appended in `cli/root.go::openAIClient`)
+- `tools.Checks()` → doctor's check list (`bite doctor` and `bite doctor --help` enumerate the registry)
+
+Per-tool tests call `Run` directly with an in-memory `Deps`. No cobra,
+no `tea.Model`, no AI mock plumbing required. Per-check tests are even
+simpler — call `Run(ctx)` directly.
+
+### Optional Tool fields you may need
+
+- `Prompt` — natural-language guidance for the model on *when* to call this
+  tool. Auto-injected into the system prompt. Falls back to `Description` if empty.
+- `DescribeDynamic func() string` — return the long-form help text computed
+  at registration time, after every `init()` has run. Use this when the help
+  must reflect current registry state (e.g. `doctor` lists every Check).
+- `Deps.StreamWriter` — write progressive output here for tools that stream
+  (e.g. `ask`). The cobra adapter wires it to stdout; AI/slash leave it nil.
 
 ---
 

@@ -41,3 +41,4 @@ node_modules/
 # to .agents/skills so Claude Code finds the same skill set as everyone else.
 .claude/*
 !.claude/skills
+docs/
