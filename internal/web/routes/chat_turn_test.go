@@ -25,6 +25,19 @@ func TestTurnStash_popExpiredReturnsNotFound(t *testing.T) {
 	require.NotContains(t, s.pending, id, "expired pop should still delete the entry so it can't be retried")
 }
 
+// TestTurnStash_stash_prunesExpiredEntries pins that prune runs as part
+// of every stash call. Without prune in the hot path, abandoned turns
+// would only be evicted by direct pruneLocked calls — leaks if traffic
+// patterns ever change.
+func TestTurnStash_stash_prunesExpiredEntries(t *testing.T) {
+	s := &turnStash{pending: map[string]pendingTurn{
+		"expired": {expires: time.Now().Add(-time.Second)},
+	}}
+	s.stash(pendingTurn{sessionID: "x"})
+	require.NotContains(t, s.pending, "expired",
+		"stash must call pruneLocked so abandoned turns don't leak")
+}
+
 // TestTurnStash_pruneEvictsExpired covers the explicit pruneLocked path.
 // stash() also prunes incidentally, but we want the helper itself
 // covered so a future refactor doesn't accidentally delete it.
