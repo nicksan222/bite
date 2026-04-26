@@ -37,18 +37,16 @@ or video. Conversations live locally in SQLite.
 
 Set ANTHROPIC_API_KEY (or put it in .env) before running. See bite doctor
 for environment health checks.`,
-	// Example block is left empty — tools.RegisterCobra fills it from the
-	// Examples each tool declares, so adding a tool extends `bite --help`
-	// automatically.
+	// Example block + RunE are filled by tools.RegisterCobra and
+	// tools.SetDefault respectively — see Execute below. This keeps the
+	// rootCmd declarative; adding/renaming the chat tool needs no edits here.
 	SilenceUsage:  true,
 	SilenceErrors: true,
-	RunE: func(cmd *cobra.Command, _ []string) error {
-		return tools.RunChatTUI(cmd.Context(), 0)
-	},
 }
 
 func Execute(ctx context.Context) error {
 	tools.RegisterCobra(rootCmd, tools.CobraDepsProvider)
+	tools.SetDefault(rootCmd, "chat")
 	return fang.Execute(
 		ctx,
 		rootCmd,

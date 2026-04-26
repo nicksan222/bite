@@ -38,6 +38,19 @@ func RegisterCobra(root *cobra.Command, provide DepsProvider) {
 	}
 }
 
+// SetDefault wires root.RunE to the named tool's cobra RunE so `bite` (no
+// subcommand) behaves identically to `bite <name>`. Call after RegisterCobra.
+// No-op if the tool isn't registered, so callers don't need an existence
+// check — the meta-tests already guarantee every registered Tool has a
+// cobra subcommand.
+func SetDefault(root *cobra.Command, name string) {
+	cmd, _, err := root.Find([]string{name})
+	if err != nil || cmd == nil || cmd.Name() != name {
+		return
+	}
+	root.RunE = cmd.RunE
+}
+
 // renderExamples gathers Example rows from every registered tool and lays
 // them out as a padded "  cmd<spaces># desc" block matching cobra's default
 // example style. Used for the rootCmd's example block.

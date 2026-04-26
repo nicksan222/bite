@@ -67,6 +67,39 @@ func indexOfNewline(s string) int {
 	return -1
 }
 
+// TestSetDefault_wiresNamedToolToRoot proves SetDefault makes `bite` (no
+// subcommand) execute the named tool's RunE. Without this, the rootCmd
+// would have to define its own RunE and we'd have two parallel chat-launch
+// paths to keep in sync.
+func TestSetDefault_wiresNamedToolToRoot(t *testing.T) {
+	withCleanRegistry(t, func() {
+		called := false
+		Register(Tool{
+			Name: "boom", Summary: "s", Description: "d",
+			Run: func(_ context.Context, _ Deps, _ Args) (Result, error) {
+				called = true
+				return Result{Text: "ran"}, nil
+			},
+		})
+		root := &cobra.Command{Use: "test"}
+		RegisterCobra(root, StaticDeps(Deps{}))
+		SetDefault(root, "boom")
+
+		_, err := runCmd(t, root)
+		require.NoError(t, err)
+		assert.True(t, called, "rootCmd RunE should delegate to the boom tool")
+	})
+}
+
+func TestSetDefault_unknownToolIsNoop(t *testing.T) {
+	root := &cobra.Command{Use: "test"}
+	RegisterCobra(root, StaticDeps(Deps{}))
+	// Unknown tool name must NOT install a RunE that would later panic on
+	// an unset closure.
+	SetDefault(root, "no_such_tool")
+	assert.Nil(t, root.RunE, "SetDefault should leave RunE untouched for unknown tools")
+}
+
 // TestRegisterCobra_skipFlagsDoNotAffectCobra confirms that SkipAI and
 // SkipSlash tools are still mounted as cobra subcommands — those flags only
 // gate the AI and slash surfaces, not cobra (which is the entire point of
